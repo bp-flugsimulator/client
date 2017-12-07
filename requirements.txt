@@ -1,0 +1,2 @@
+git+https://git@github.com/bp-flugsimulator/utils.git#egg=bp-flugsimulator-utils[websockets]
+uptime==3.0.1
