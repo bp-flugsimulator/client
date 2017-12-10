@@ -3,7 +3,7 @@ This module contains all available rpc commands.
 """
 
 import asyncio
-import uptime
+import uptime as upt
 
 
 def uptime():
@@ -15,4 +15,4 @@ def uptime():
     -------
         uptime
     """
-    return uptime.uptime()
+    return upt.uptime()
