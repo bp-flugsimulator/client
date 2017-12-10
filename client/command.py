@@ -16,3 +16,34 @@ def uptime():
         uptime
     """
     return upt.uptime()
+
+
+@asyncio.coroutine
+def execute(path, arguments):
+    """
+    Executes a subprocess and returns the exit code.
+
+    Arguments
+    ---------
+        path: A string which represents a valid path to an existing program.
+        arguments: A list of strings which will be the arguments for the
+                     program.
+
+    Returns
+    -------
+        Exit code of the process.
+    """
+    if not isinstance(path, str):
+        raise ValueError("Path to program is not a string.")
+
+    if not isinstance(arguments, list):
+        raise ValueError("Arguments is not a list.")
+    else:
+        for arg in arguments:
+            if not isinstance(arg, str):
+                raise ValueError("Element in arguments is not a string.")
+
+    process = yield from asyncio.create_subprocess_exec([path] + arguments)
+    code = yield from process.wait()
+
+    return code
