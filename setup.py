@@ -30,7 +30,13 @@ setup(
     license="MIT",
     install_requires=get_requirements("requirements.txt"),
     python_requires=">=3.4",
-    py_modules=["client"],
-    packages=find_packages(
-        exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
+    packages=find_packages(exclude=[
+        "*.tests",
+        "*.tests.*",
+        "tests.*",
+        "tests",
+    ]),
+    entry_points={
+        'console_scripts': ['bp-flugsimulator-client=src.__main__:run']
+    },
 )
