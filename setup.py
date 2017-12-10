@@ -37,6 +37,6 @@ setup(
         "tests",
     ]),
     entry_points={
-        'console_scripts': ['bp-flugsimulator-client=src.__main__:run']
+        'console_scripts': ['bp-flugsimulator-client=client.__main__:run']
     },
 )
