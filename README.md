@@ -10,5 +10,5 @@ sudo pip install git+https://git@github.com/bp-flugsimulator/client.git#egg=bp-f
 
 1. Docker installieren
 1. ```docker build . -t bp-client -f bp-client.dockerfile``` Build Images
-1. (Optional) ```docker image prune``` Löscht alle alten Images
-1. ```docker run -t bp-client``` Führt den container aus
+1. (Optional) ```docker image prune``` LÃ¶scht alle alten Images
+1. ```docker run -t bp-client``` FÃ¼hrt den container aus
