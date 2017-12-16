@@ -5,9 +5,10 @@ Main file
 import argparse
 import asyncio
 import sys, os
+import logging
+import command
 
 from utils import Status, Command, RpcReceiver
-
 
 def generate_uri(host, port, path):
     """
@@ -49,8 +50,6 @@ def run():
         "notifications",
     )
 
-    print(os.listdir("/usr/bin/"))
-
     print("Starting client.")
     rpc = RpcReceiver(url_listen, url_send)
     asyncio.get_event_loop().run_until_complete(rpc.run())
@@ -58,4 +57,17 @@ def run():
 
 
 if __name__ == "__main__":
+    root = logging.getLogger()
+    root.setLevel(logging.DEBUG)
+
+    ch = logging.StreamHandler(sys.stdout)
+    ch.setLevel(logging.DEBUG)
+
+    formatter = logging.Formatter(
+        "[CLIENT] [%(asctime)s]: %(message)s",
+        datefmt='%M:%S',
+    )
+    ch.setFormatter(formatter)
+    root.addHandler(ch)
+
     run()

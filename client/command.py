@@ -20,9 +20,9 @@ def uptime():
     return upt.uptime()
 
 
-@asyncio.coroutine
 @Rpc.method
-def execute(path, arguments, pid):
+@asyncio.coroutine
+def execute(pid, path, arguments):
     """
     Executes a subprocess and returns the exit code.
 
@@ -47,7 +47,7 @@ def execute(path, arguments, pid):
             if not isinstance(arg, str):
                 raise ValueError("Element in arguments is not a string.")
 
-    process = yield from asyncio.create_subprocess_exec([path] + arguments)
+    process = yield from asyncio.create_subprocess_exec(*([path] + arguments))
     code = yield from process.wait()
 
     return {"code": code, "pid": pid}
