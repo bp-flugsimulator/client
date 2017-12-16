@@ -10,9 +10,21 @@ import command
 
 from utils import Status, Command, RpcReceiver
 
+
 def generate_uri(host, port, path):
     """
     Generates URI string for connection.
+
+    Arguments
+    ---------
+        host: Host string
+        port: Port string/number
+        path: Path string wihtout starting '/'
+
+    Returns
+    -------
+        A valid URI string.
+
     """
     return "ws://{host}:{port}/{path}".format(
         host=host,
@@ -21,7 +33,10 @@ def generate_uri(host, port, path):
     )
 
 
-def run():
+def main():
+    """
+    Main function which will called if this is the main script.
+    """
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument(
         'host',
@@ -70,4 +85,4 @@ if __name__ == "__main__":
     ch.setFormatter(formatter)
     root.addHandler(ch)
 
-    run()
+    main()
