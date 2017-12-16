@@ -49,9 +49,6 @@ def run():
         "notifications",
     )
 
-    print(url_listen)
-    print(url_send)
-
     print("Starting client.")
     rpc = RpcReceiver(url_listen, url_send)
     asyncio.get_event_loop().run_until_complete(rpc.run())
