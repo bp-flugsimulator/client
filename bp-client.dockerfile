@@ -11,6 +11,4 @@ RUN python /usr/src/app/setup.py install
 # websockets
 EXPOSE 8000
 
-ENTRYPOINT bp-flugsimulator-client
-
-CMD ["--help"]
+ENTRYPOINT ["bp-flugsimulator-client"]
