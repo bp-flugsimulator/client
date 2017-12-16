@@ -22,7 +22,7 @@ def uptime():
 
 @asyncio.coroutine
 @Rpc.method
-def execute(path, arguments):
+def execute(path, arguments, pid):
     """
     Executes a subprocess and returns the exit code.
 
@@ -31,10 +31,11 @@ def execute(path, arguments):
         path: A string which represents a valid path to an existing program.
         arguments: A list of strings which will be the arguments for the
                      program.
+        pid: The ID from the master table.
 
     Returns
     -------
-        Exit code of the process.
+        Exit code of the process and the pid from the master table.
     """
     if not isinstance(path, str):
         raise ValueError("Path to program is not a string.")
@@ -49,4 +50,4 @@ def execute(path, arguments):
     process = yield from asyncio.create_subprocess_exec([path] + arguments)
     code = yield from process.wait()
 
-    return code
+    return {"code": code, "pid": pid}
