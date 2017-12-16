@@ -4,8 +4,10 @@ This module contains all available rpc commands.
 
 import asyncio
 import uptime as upt
+from utils import Rpc
 
 
+@Rpc.method
 def uptime():
     """
     RPC command which returns the current uptime of
@@ -19,6 +21,7 @@ def uptime():
 
 
 @asyncio.coroutine
+@Rpc.method
 def execute(path, arguments):
     """
     Executes a subprocess and returns the exit code.
