@@ -9,7 +9,7 @@ COPY . /usr/src/app
 RUN python /usr/src/app/setup.py install
 
 # websockets
-EXPOSE 8750
+EXPOSE 8000
 
 ENTRYPOINT bp-flugsimulator-client
 
