@@ -4,7 +4,7 @@ Main file
 
 import argparse
 import asyncio
-import sys
+import sys, os
 
 from utils import Status, Command, RpcReceiver
 
@@ -48,6 +48,8 @@ def run():
         args.port,
         "notifications",
     )
+
+    print(os.listdir("/usr/bin/"))
 
     print("Starting client.")
     rpc = RpcReceiver(url_listen, url_send)
