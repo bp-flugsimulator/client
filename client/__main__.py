@@ -12,6 +12,17 @@ from utils import Status, Command, RpcReceiver
 def generate_uri(host, port, path):
     """
     Generates URI string for connection.
+
+    Arguments
+    ---------
+        host: Host string
+        port: Port string/number
+        path: Path string wihtout starting '/'
+
+    Returns
+    -------
+        A valid URI string.
+
     """
     return "ws://{host}:{port}/{path}".format(
         host=host,
@@ -20,7 +31,10 @@ def generate_uri(host, port, path):
     )
 
 
-def run():
+def main():
+    """
+    Main function which will called if this is the main script.
+    """
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument(
         'host',
@@ -30,7 +44,7 @@ def run():
     )
     parser.add_argument(
         'port',
-        metavar='P',
+        metavar='P',    print(os.listdir("/usr/bin/"))
         type=int,
         help='a network port',
     )
@@ -49,7 +63,7 @@ def run():
         "notifications",
     )
 
-    print(os.listdir("/usr/bin/"))
+    # print(os.listdir("/usr/bin/"))
 
     print("Starting client.")
     rpc = RpcReceiver(url_listen, url_send)
@@ -58,4 +72,4 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
+    main()
