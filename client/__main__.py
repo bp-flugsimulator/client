@@ -40,13 +40,13 @@ def main():
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument(
         'host',
-        metavar='H',
+        metavar='HOST',
         type=str,
         help='ip address to server',
     )
     parser.add_argument(
         'port',
-        metavar='P',
+        metavar='PORT',
         type=int,
         help='a network port',
     )
