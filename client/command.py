@@ -8,27 +8,35 @@ from utils import Rpc
 
 
 @Rpc.method
-def uptime(pid):
+def uptime(sid):
     """
     RPC command which returns the current uptime of
     this client.
 
+    Arguments
+    ---------
+        sid: Id of the current client
+
     Returns
     -------
-        uptime
+        uptime and sid
     """
     return {"uptime": str(upt.uptime()), "pid": pid}
 
 
 @Rpc.method
-def boottime(pid):
+def boottime(sid):
     """
     RPC command which returns the boottime of
     this client.
 
+    Arguments
+    ---------
+        sid: Id of the current client
+
     Returns
     -------
-        boottime
+        boottime and sid
     """
     return {"boottime": str(upt.boottime()), "pid": pid}
 
