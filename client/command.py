@@ -21,6 +21,19 @@ def uptime():
 
 
 @Rpc.method
+def boottime():
+    """
+    RPC command which returns the boottime of
+    this client.
+
+    Returns
+    -------
+        boottime
+    """
+    return upt.boottime()
+
+
+@Rpc.method
 @asyncio.coroutine
 def execute(pid, path, arguments):
     """
