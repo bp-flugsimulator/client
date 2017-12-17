@@ -8,6 +8,7 @@ from utils import Rpc
 
 
 @Rpc.method
+@asyncio.coroutine
 def uptime(sid):
     """
     RPC command which returns the current uptime of
@@ -19,12 +20,13 @@ def uptime(sid):
 
     Returns
     -------
-        uptime and sid
+        json consisting of the methodname, uptime and sid
     """
-    return {"uptime": str(upt.uptime()), "sid": sid}
+    return {"method": "uptime", "uptime": str(upt.uptime()), "sid": sid}
 
 
 @Rpc.method
+@asyncio.coroutine
 def boottime(sid):
     """
     RPC command which returns the boottime of
@@ -36,9 +38,9 @@ def boottime(sid):
 
     Returns
     -------
-        boottime and sid
+        json consisting of the methodname, boottime and sid
     """
-    return {"boottime": str(upt.boottime()), "sid": sid}
+    return {"method": "boottime", "boottime": str(upt.boottime()), "sid": sid}
 
 
 @Rpc.method
@@ -56,7 +58,7 @@ def execute(pid, path, arguments):
 
     Returns
     -------
-        Exit code of the process and the pid from the master table.
+        Method name, exit code of the process and the pid from the master table.
     """
     if not isinstance(path, str):
         raise ValueError("Path to program is not a string.")
@@ -71,4 +73,4 @@ def execute(pid, path, arguments):
     process = yield from asyncio.create_subprocess_exec(*([path] + arguments))
     code = yield from process.wait()
 
-    return {"code": code, "pid": pid}
+    return {"method": "execute", "code": code, "pid": pid}
