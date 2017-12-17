@@ -8,7 +8,7 @@ from utils import Rpc
 
 
 @Rpc.method
-def uptime():
+def uptime(pid):
     """
     RPC command which returns the current uptime of
     this client.
@@ -17,11 +17,11 @@ def uptime():
     -------
         uptime
     """
-    return upt.uptime()
+    return {"uptime": upt.uptime(), "pid": pid}
 
 
 @Rpc.method
-def boottime():
+def boottime(pid):
     """
     RPC command which returns the boottime of
     this client.
@@ -30,7 +30,7 @@ def boottime():
     -------
         boottime
     """
-    return upt.boottime()
+    return {"boottime": upt.boottime(), "pid": pid}
 
 
 @Rpc.method
