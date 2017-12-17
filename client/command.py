@@ -21,7 +21,7 @@ def uptime(sid):
     -------
         uptime and sid
     """
-    return {"uptime": str(upt.uptime()), "pid": pid}
+    return {"uptime": str(upt.uptime()), "sid": sid}
 
 
 @Rpc.method
@@ -38,7 +38,7 @@ def boottime(sid):
     -------
         boottime and sid
     """
-    return {"boottime": str(upt.boottime()), "pid": pid}
+    return {"boottime": str(upt.boottime()), "sid": sid}
 
 
 @Rpc.method
