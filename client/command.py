@@ -29,7 +29,7 @@ def uptime(sid):
 def boottime(sid):
     """
     RPC command which returns the boottime of this client. The boottime has to
-    following format YYYY/MM/DD hh:mm:ss
+    following format YYYY-MM-DD hh:mm:ss
 
     Arguments
     ---------
