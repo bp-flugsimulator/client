@@ -8,6 +8,7 @@ import sys, os
 import logging
 
 from utils import Status, Command, RpcReceiver
+from . import command
 
 
 def generate_uri(host, port, path):
