@@ -4,7 +4,8 @@ Main file
 
 import argparse
 import asyncio
-import sys, os
+import sys
+import os
 import logging
 
 from utils import Status, Command, RpcReceiver
