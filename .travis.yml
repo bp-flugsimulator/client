@@ -11,7 +11,7 @@ install:
 script:
   - export PYTHONWARNINGS=all
   - python setup.py test
-  - coverage run --source="./client" --omit="*__init__.py" setup.py test
+  - coverage run --source="./client" --omit="*__init__.py,*__main__.py" setup.py test
 
 after_success:
   coveralls
