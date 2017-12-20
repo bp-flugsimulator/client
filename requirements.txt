@@ -1,2 +1,2 @@
-bp-flugsimulator-utils[websockets]
+git+https://github.com/bp-flugsimulator/utils
 uptime==3.0.1
