@@ -55,7 +55,7 @@ class TestCommands(unittest.TestCase):
         self.assertRaises(
             ValueError,
             loop.run_until_complete,
-            client.command.execute(0, ["calc.exe"], [1, 2, 34]),
+            client.command.execute(0, "calc.exe", [1, 2, 34]),
         )
 
     def test_execution_not_existing_prog(self):
