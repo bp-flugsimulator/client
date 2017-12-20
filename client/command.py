@@ -11,8 +11,7 @@ from utils import Rpc
 @asyncio.coroutine
 def uptime(sid):
     """
-    RPC command which returns the current uptime of
-    this client.
+    RPC command which returns the current uptime of this client.
 
     Arguments
     ---------
@@ -29,8 +28,8 @@ def uptime(sid):
 @asyncio.coroutine
 def boottime(sid):
     """
-    RPC command which returns the boottime of
-    this client.
+    RPC command which returns the boottime of this client. The boottime has to
+    following format YYYY/MM/DD hh:mm:ss
 
     Arguments
     ---------
@@ -40,7 +39,8 @@ def boottime(sid):
     -------
         json consisting of the methodname, boottime and sid
     """
-    return {"method": "boottime", "boottime": str(upt.boottime()), "sid": sid}
+    string_boottime = upt.boottime().strftime("%Y-%m-%d %X")
+    return {"method": "boottime", "boottime": string_boottime, "sid": sid}
 
 
 @Rpc.method
