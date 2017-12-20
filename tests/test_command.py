@@ -17,7 +17,8 @@ class TestCommands(unittest.TestCase):
                 self.assertEqual(getattr(client.command, func), Rpc.get(func))
 
     def test_uptime(self):
-        time = client.command.uptime(0)
+        loop = asyncio.get_event_loop()
+        time = loop.run_until_complete(client.command.uptime(0))
         uptime_time = float(time['uptime'])
         uptime_sid = int(time['sid'])
         self.assertEqual(uptime_sid, 0)
@@ -25,7 +26,8 @@ class TestCommands(unittest.TestCase):
 
     def test_boottime(self):
         import datetime
-        time = client.command.boottime(0)
+        loop = asyncio.get_event_loop()
+        time = loop.run_until_complete(client.command.boottime(0))
         boottime_time = datetime.datetime.strptime(time['boottime'],
                                                    "%Y-%m-%d %X")
         boottime_sid = int(time['sid'])
@@ -67,7 +69,7 @@ class TestCommands(unittest.TestCase):
             args = ["-c", "echo $(date)"]
 
         loop = asyncio.get_event_loop()
-        result = {"code": 0, "pid": 0}
+        result = {"code": 0, "method": "execute", "pid": 0}
         self.assertEqual(
             result,
             loop.run_until_complete(client.command.execute(0, prog, args)),
