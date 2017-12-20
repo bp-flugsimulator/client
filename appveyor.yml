@@ -1,124 +1,25 @@
+image:
+- Visual Studio 2013
+- Visual Studio 2015
+- Visual Studio 2017
+
 environment:
   matrix:
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-      MSVC_SETUP_PATH: C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat
-      COMMON_TOOLS: C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\Tools\
-      MSVC_SETUP_ARG: x64
-      PYTHON: "C:\\Python36-x64"
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-      MSVC_SETUP_PATH: C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat
-      COMMON_TOOLS: C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\Tools\
-      MSVC_SETUP_ARG: x86_amd64
-      PYTHON: "C:\\Python36"
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-      MSVC_SETUP_PATH: C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat
-      COMMON_TOOLS: C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\Tools\
-      MSVC_SETUP_ARG: x64
-      PYTHON: "C:\\Python35-x64"
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-      MSVC_SETUP_PATH: C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat
-      COMMON_TOOLS: C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\Tools\
-      MSVC_SETUP_ARG: x86_amd64
-      PYTHON: "C:\\Python35"
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-      MSVC_SETUP_PATH: C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat
-      COMMON_TOOLS: C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\Tools\
-      MSVC_SETUP_ARG: x64
-      PYTHON: "C:\\Python34-x64"
-      DISTUTILS_USE_SDK: "1"
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-      MSVC_SETUP_PATH: C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvarsall.bat
-      COMMON_TOOLS: C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\Tools\
-      MSVC_SETUP_ARG: x86_amd64
-      PYTHON: "C:\\Python34"
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-      MSVC_SETUP_PATH: C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat
-      COMMON_TOOLS: C:\Program Files (x86)\Microsoft Visual Studio 14.0\Common7\Tools\
-      MSVC_SETUP_ARG: x64
-      PYTHON: "C:\\Python36-x64"
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-      MSVC_SETUP_PATH: C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat
-      COMMON_TOOLS: C:\Program Files (x86)\Microsoft Visual Studio 14.0\Common7\Tools\
-      MSVC_SETUP_ARG: x86_amd64
-      PYTHON: "C:\\Python36"
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-      MSVC_SETUP_PATH: C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat
-      COMMON_TOOLS: C:\Program Files (x86)\Microsoft Visual Studio 14.0\Common7\Tools\
-      MSVC_SETUP_ARG: x64
-      PYTHON: "C:\\Python35-x64"
-      DISTUTILS_USE_SDK: "1"
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-      MSVC_SETUP_PATH: C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat
-      COMMON_TOOLS: C:\Program Files (x86)\Microsoft Visual Studio 14.0\Common7\Tools\
-      MSVC_SETUP_ARG: x86_amd64
-      PYTHON: "C:\\Python35"
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-      MSVC_SETUP_PATH: C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat
-      COMMON_TOOLS: C:\Program Files (x86)\Microsoft Visual Studio 14.0\Common7\Tools\
-      MSVC_SETUP_ARG: x64
-      PYTHON: "C:\\Python34-x64"
-      DISTUTILS_USE_SDK: "1"
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
-      MSVC_SETUP_PATH: C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat
-      COMMON_TOOLS: C:\Program Files (x86)\Microsoft Visual Studio 14.0\Common7\Tools\
-      MSVC_SETUP_ARG: x86_amd64
-      PYTHON: "C:\\Python34"
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
-      MSVC_SETUP_PATH: C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat
-      COMMON_TOOLS: C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\Tools\
-      MSVC_SETUP_ARG: x86_amd64
-      PYTHON: "C:\\Python36"
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
-      MSVC_SETUP_PATH: C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat
-      COMMON_TOOLS: C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\Tools\
-      MSVC_SETUP_ARG: x64
-      PYTHON: "C:\\Python36-x64"
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
-      MSVC_SETUP_PATH: C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat
-      COMMON_TOOLS: C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\Tools\
-      MSVC_SETUP_ARG: x86_amd64
-      PYTHON: "C:\\Python35"
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
-      MSVC_SETUP_PATH: C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat
-      COMMON_TOOLS: C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\Tools\
-      MSVC_SETUP_ARG: x64
-      PYTHON: "C:\\Python35-x64"
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
-      MSVC_SETUP_PATH: C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat
-      COMMON_TOOLS: C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\Tools\
-      MSVC_SETUP_ARG: x86_amd64
-      PYTHON: "C:\\Python34"
-
-    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
-      MSVC_SETUP_PATH: C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall.bat
-      COMMON_TOOLS: C:\Program Files (x86)\Microsoft Visual Studio 12.0\Common7\Tools\
-      MSVC_SETUP_ARG: x64
-      PYTHON: "C:\\Python34-x64"
-      DISTUTILS_USE_SDK: "1"
+    - PYTHON: "C:\\Python34"
+    - PYTHON: "C:\\Python35"
+    - PYTHON: "C:\\Python36"
+    - PYTHON: "C:\\Python34-x64"
+    - PYTHON: "C:\\Python35-x64"
+    - PYTHON: "C:\\Python36-x64"
 
 
 install:
-  - call "%MSVC_SETUP_PATH%" %MSVC_SETUP_ARG%
-  - "%PYTHON%\\python.exe -m pip install -r requirements.txt"
+  - "%PYTHON%\\python.exe install.py"
 
 build: off
+
+cache:
+  - $(PYTHON)\lib\site-packages
 
 
 test_script:
