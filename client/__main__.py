@@ -19,7 +19,7 @@ def generate_uri(host, port, path):
     ---------
         host: Host string
         port: Port string/number
-        path: Path string wihtout starting '/'
+        path: Path string without a starting '/'
 
     Returns
     -------
