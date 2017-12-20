@@ -50,6 +50,14 @@ class TestCommands(unittest.TestCase):
             client.command.execute(0, ["calc.exe"], []),
         )
 
+    def test_execution_wrong_arguments_elements(self):
+        loop = asyncio.get_event_loop()
+        self.assertRaises(
+            ValueError,
+            loop.run_until_complete,
+            client.command.execute(0, ["calc.exe"], [1, 2, 34]),
+        )
+
     def test_execution_not_existing_prog(self):
         loop = asyncio.get_event_loop()
         self.assertRaises(
