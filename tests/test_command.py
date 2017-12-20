@@ -46,28 +46,28 @@ class TestCommands(unittest.TestCase):
         self.assertRaises(
             ValueError,
             self.loop.run_until_complete,
-            client.command.execute(0, "calc.exe", "this is a arguments list"),
+            client.command.execute(0, "calcs.exe", "this is a arguments list"),
         )
 
     def test_execution_wrong_prog_object(self):
         self.assertRaises(
             ValueError,
             self.loop.run_until_complete,
-            client.command.execute(0, ["calc.exe"], []),
+            client.command.execute(0, ["calcs.exe"], []),
         )
 
     def test_execution_wrong_arguments_elements(self):
         self.assertRaises(
             ValueError,
             self.loop.run_until_complete,
-            client.command.execute(0, "calc.exe", [1, 2, 34]),
+            client.command.execute(0, "calcs.exe", [1, 2, 34]),
         )
 
     def test_execution_not_existing_prog(self):
         self.assertRaises(
             FileNotFoundError,
             self.loop.run_until_complete,
-            client.command.execute(0, "calc.exe", []),
+            client.command.execute(0, "calcs.exe", []),
         )
 
     def test_execution_echo_shell(self):
