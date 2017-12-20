@@ -66,8 +66,15 @@ def main():
     )
 
     print("Starting client.")
+
+    if os.name == 'nt':
+        loop = asyncio.ProactorEventLoop()
+        asyncio.set_event_loop(loop)
+    else:
+        loop = asyncio.get_event_loop()
+
     rpc = RpcReceiver(url_listen, url_send)
-    asyncio.get_event_loop().run_until_complete(rpc.run())
+    loop.run_until_complete(rpc.run())
     print("Exit client ...")
 
 
