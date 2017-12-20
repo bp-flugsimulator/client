@@ -6,7 +6,6 @@ import argparse
 import asyncio
 import sys, os
 import logging
-import client.command
 
 from utils import Status, Command, RpcReceiver
 
