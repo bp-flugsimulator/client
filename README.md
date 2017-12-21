@@ -30,8 +30,16 @@ sudo pip install git+https://git@github.com/bp-flugsimulator/client.git#egg=bp-f
     ```py
     ALLOWED_HOSTS=["172.18.0.0", "localhost", "127.0.0.1"]
     ```
-1. [bp-flugsimulator/server](https://github.com/bp-flugsimulator/server) starten mit `python manage.py runserver 0.0.0.0:8000`
+1. Den [bp-flugsimulator/server](https://github.com/bp-flugsimulator/server) starten, zuvor aber in das richtige Verzeichnis wechseln
+    ```sh
+    cd ../server
+    python manage.py runserver 0.0.0.0:8000
+    ```
+1. Im Webbrowser `127.0.0.1:8000/slaves` aufrufen und den Client mit `172.18.0.2` hinzufügen. MAC-Adresse ist egal, da Docker das nicht kann.
 1. Den Client mit Docker starten
     ```sh
     docker run --net slave_net --ip 172.18.0.2 bp-client 172.18.0.1 8000
     ```
+1. Test Programm für den eben hinzugefügten Client hinzufügen mit dem Namen `Test` und dem Path `bash` und dem Argument `"echo $(date)"`.
+1. Das Program ausführen.
+1. In der Konsole mit dem Docker Image sollte zusehen sein, dass der Command angekommen ist
