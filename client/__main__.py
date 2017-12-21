@@ -4,7 +4,8 @@ Main file
 
 import argparse
 import asyncio
-import sys, os
+import sys
+import os
 import logging
 
 from utils import Status, Command, RpcReceiver
@@ -19,7 +20,7 @@ def generate_uri(host, port, path):
     ---------
         host: Host string
         port: Port string/number
-        path: Path string wihtout starting '/'
+        path: Path string without a starting '/'
 
     Returns
     -------
@@ -66,8 +67,15 @@ def main():
     )
 
     print("Starting client.")
+
+    if os.name == 'nt':
+        loop = asyncio.ProactorEventLoop()
+        asyncio.set_event_loop(loop)
+    else:
+        loop = asyncio.get_event_loop()
+
     rpc = RpcReceiver(url_listen, url_send)
-    asyncio.get_event_loop().run_until_complete(rpc.run())
+    loop.run_until_complete(rpc.run())
     print("Exit client ...")
 
 

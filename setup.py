@@ -39,4 +39,5 @@ setup(
     entry_points={
         'console_scripts': ['bp-flugsimulator-client=client.__main__:main']
     },
+    test_suite="tests",
 )
