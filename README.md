@@ -2,7 +2,7 @@
 
 ## Installieren
 
-```
+```sh
 sudo pip install git+https://git@github.com/bp-flugsimulator/client.git#egg=bp-flugsimulator-client
 ```
 
@@ -40,6 +40,6 @@ sudo pip install git+https://git@github.com/bp-flugsimulator/client.git#egg=bp-f
     ```sh
     docker run --net slave_net --ip 172.18.0.2 bp-client 172.18.0.1 8000
     ```
-1. Test Programm für den eben hinzugefügten Client hinzufügen mit dem Namen `Test` und dem Path `bash` und dem Argument `"echo $(date)"`.
+1. Test Programm für den eben hinzugefügten Client hinzufügen mit dem Namen `Test` und dem Path `bash` und dem Argument `-c "echo $(date)"`.
 1. Das Program ausführen.
 1. In der Konsole mit dem Docker Image sollte zusehen sein, dass der Command angekommen ist
