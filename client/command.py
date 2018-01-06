@@ -16,11 +16,12 @@ def uptime(sid):
 
     Arguments
     ---------
-        sid: Id of the current client
+    sid: int
+        Id of the current client
 
     Returns
     -------
-        json consisting of the methodname, uptime and sid
+    json consisting of the methodname, uptime and sid
     """
     return {"method": "uptime", "uptime": str(upt.uptime()), "sid": sid}
 
@@ -34,11 +35,12 @@ def boottime(sid):
 
     Arguments
     ---------
-        sid: Id of the current client
+    sid: int
+        Id of the current client
 
     Returns
     -------
-        json consisting of the methodname, boottime and sid
+    json consisting of the methodname, boottime and sid
     """
     string_boottime = upt.boottime().strftime("%Y-%m-%d %X")
     return {"method": "boottime", "boottime": string_boottime, "sid": sid}
@@ -52,14 +54,16 @@ def execute(pid, path, arguments):
 
     Arguments
     ---------
-        path: A string which represents a valid path to an existing program.
-        arguments: A list of strings which will be the arguments for the
-                     program.
-        pid: The ID from the master table.
+    path: string
+        Represents a valid path to an existing program.
+    arguments: string[]
+        which will be the arguments for the program.
+    pid: int
+        The ID from the master table.
 
     Returns
     -------
-        Method name, exit code of the process and the pid from the master table.
+    Method name, exit code of the process and the pid from the master table.
     """
     if not isinstance(path, str):
         raise ValueError("Path to program is not a string.")
@@ -85,14 +89,17 @@ def move_file(fid, sourcePath, destinationPath):
 
     Arguments
     ---------
-        sourcePath: A string which represents a valid path to an existing file.
-        destinationPath: A string which represents a valid path.
-            The file will be renamed and linked to that destination
-        fid: the file ID from the master table.
+    fid: int
+        the file ID from the master table.
+    sourcePath: string
+        Represents a valid path to an existing file.
+    destinationPath: string
+        Represents a valid path to the desired destination.
+        The file will be renamed and linked to that destination
 
     Returns
     -------
-        Method name, error of the process and the fid from the master table.
+    Method name, error of the process and the fid from the master table.
     """
     if not isinstance(sourcePath, str):
         raise ValueError("source path is not a string!")
