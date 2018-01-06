@@ -4,6 +4,7 @@ This module contains all available rpc commands.
 
 import asyncio
 import uptime as upt
+import os
 from utils import Rpc
 
 
@@ -74,3 +75,19 @@ def execute(pid, path, arguments):
     code = yield from process.wait()
 
     return {"method": "execute", "code": code, "pid": pid}
+
+
+@Rpc.method
+@asyncio.coroutine
+def move_file(fid, sourcePath, destinationPath):
+    """
+    moves File
+    """
+    if not isinstance(sourcePath, str):
+        raise ValueError("source path is not a string!")
+    if not isinstance(destinationPath, str):
+        raise ValueError("destination path is not a string!")
+    else:
+        os.link(sourcePath, destinationPath)
+
+    return {"method": "move_file", "fid": fid}
