@@ -5,6 +5,7 @@ This module contains all available rpc commands.
 import asyncio
 import uptime as upt
 import os
+import platform
 from utils import Rpc
 
 
@@ -109,3 +110,15 @@ def move_file(fid, sourcePath, destinationPath):
         os.link(sourcePath, destinationPath)
 
     return {"method": "move_file", "error": os.error, "fid": fid}
+
+
+@Rpc.method
+@asyncio.coroutine
+def shutdown():
+    """
+    shuts down the system
+    """
+    if platform.system() == "Windows":
+        os.system("shutdown -s -t 0")
+    else:
+        os.system("shutdown -h now")
