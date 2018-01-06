@@ -81,7 +81,18 @@ def execute(pid, path, arguments):
 @asyncio.coroutine
 def move_file(fid, sourcePath, destinationPath):
     """
-    moves File
+    Moves and renames a given file to a given destination.
+
+    Arguments
+    ---------
+        sourcePath: A string which represents a valid path to an existing file.
+        destinationPath: A string which represents a valid path.
+            The file will be renamed and linked to that destination
+        fid: the file ID from the master table.
+
+    Returns
+    -------
+        Method name, error of the process and the fid from the master table.
     """
     if not isinstance(sourcePath, str):
         raise ValueError("source path is not a string!")
