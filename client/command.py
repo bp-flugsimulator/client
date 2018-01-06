@@ -90,4 +90,4 @@ def move_file(fid, sourcePath, destinationPath):
     else:
         os.link(sourcePath, destinationPath)
 
-    return {"method": "move_file", "fid": fid}
+    return {"method": "move_file", "error": os.error, "fid": fid}

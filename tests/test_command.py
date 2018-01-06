@@ -84,3 +84,51 @@ class TestCommands(unittest.TestCase):
             self.loop.run_until_complete(
                 client.command.execute(0, prog, args)),
         )
+
+    def test_move_file(self):
+        file_name = "testfile.txt"
+        if os.path.isfile(file_name):
+            os.remove(file_name)
+        myfile_name = "testfile_link.txt"
+        if os.path.isfile(myfile_name):
+            os.remove(myfile_name)
+
+        open(file_name, "w").close()
+        self.loop.run_until_complete(
+            client.command.move_file(0, file_name, myfile_name))
+        self.assertTrue(os.path.isfile(myfile_name))
+        os.remove(file_name)
+        os.remove(myfile_name)
+
+    def test_move_file_wrong_sourcePath_object(self):
+        self.assertRaises(
+            ValueError,
+            self.loop.run_until_complete,
+            client.command.move_file(0, 1, "file.txt"),
+        )
+
+    def test_move_file_wrong_destinationPath_object(self):
+        self.assertRaises(
+            ValueError,
+            self.loop.run_until_complete,
+            client.command.move_file(0, "file.txt", 1),
+        )
+
+    def test_move_file_no_file_exists(self):
+        self.assertRaises(FileNotFoundError, self.loop.run_until_complete,
+                          client.command.move_file(0, "file.txt",
+                                                   "file_link.test"))
+
+    def test_move_file_already_exists(self):
+        file_name = "testfile2.txt"
+        if os.path.isfile(file_name):
+            os.remove(file_name)
+        open(file_name, "w").close()
+        myfile_name = "testfile2_link.txt"
+        if os.path.isfile(myfile_name):
+            os.remove(myfile_name)
+        open(myfile_name, "w").close()
+        self.assertRaises(FileExistsError, self.loop.run_until_complete,
+                          client.command.move_file(0, file_name, myfile_name))
+        os.remove(file_name)
+        os.remove(myfile_name)
