@@ -3,53 +3,25 @@ This module contains all available rpc commands.
 """
 
 import asyncio
-import uptime as upt
 import os
 import platform
+
 from utils import Rpc
 
 
 @Rpc.method
 @asyncio.coroutine
-def uptime(sid):
+def online():
     """
-    RPC command which returns the current uptime of this client.
-
-    Arguments
-    ---------
-    sid: int
-        Id of the current client
-
-    Returns
-    -------
-    json consisting of the methodname, uptime and sid
+    Function that can be used by the master to
+    determine if the slave is online
     """
-    return {"method": "uptime", "uptime": str(upt.uptime()), "sid": sid}
+    pass
 
 
 @Rpc.method
 @asyncio.coroutine
-def boottime(sid):
-    """
-    RPC command which returns the boottime of this client. The boottime has to
-    following format YYYY-MM-DD hh:mm:ss
-
-    Arguments
-    ---------
-    sid: int
-        Id of the current client
-
-    Returns
-    -------
-    json consisting of the methodname, boottime and sid
-    """
-    string_boottime = upt.boottime().strftime("%Y-%m-%d %X")
-    return {"method": "boottime", "boottime": string_boottime, "sid": sid}
-
-
-@Rpc.method
-@asyncio.coroutine
-def execute(pid, path, arguments):
+def execute(path, arguments):
     """
     Executes a subprocess and returns the exit code.
 
@@ -78,13 +50,12 @@ def execute(pid, path, arguments):
 
     process = yield from asyncio.create_subprocess_exec(*([path] + arguments))
     code = yield from process.wait()
-
-    return {"method": "execute", "code": code, "pid": pid}
+    return code
 
 
 @Rpc.method
 @asyncio.coroutine
-def move_file(fid, sourcePath, destinationPath):
+def move_file(source_path, destination_path):
     """
     Moves and renames a given file to a given destination.
 
@@ -102,14 +73,12 @@ def move_file(fid, sourcePath, destinationPath):
     -------
     Method name, error of the process and the fid from the master table.
     """
-    if not isinstance(sourcePath, str):
+    if not isinstance(source_path, str):
         raise ValueError("source path is not a string!")
-    if not isinstance(destinationPath, str):
+    if not isinstance(destination_path, str):
         raise ValueError("destination path is not a string!")
     else:
-        os.link(sourcePath, destinationPath)
-
-    return {"method": "move_file", "error": os.error, "fid": fid}
+        os.link(source_path, destination_path)
 
 
 @Rpc.method
