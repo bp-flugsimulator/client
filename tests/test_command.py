@@ -116,4 +116,5 @@ class TestCommands(unittest.TestCase):
         os.remove(myfile_name)
 
     def test_online(self):
-        client.command.online()
+        result =  self.loop.run_until_complete(client.command.online())
+        self.assertIsNone(result)

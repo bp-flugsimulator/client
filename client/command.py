@@ -5,6 +5,7 @@ This module contains all available rpc commands.
 import asyncio
 import os
 import platform
+import subprocess
 
 from utils import Rpc
 
@@ -88,6 +89,6 @@ def shutdown():
     shuts down the system
     """
     if platform.system() == "Windows":
-        os.system("shutdown -s -t 0")
+        subprocess.call(['shutdown', '-s', '-t', '0'])
     else:
-        os.system("shutdown -h now")
+        subprocess.call(['shutdown', '-h', 'now'])
