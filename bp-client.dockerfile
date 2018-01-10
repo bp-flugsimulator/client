@@ -1,5 +1,6 @@
-LABEL maintainer="bp-team"
 FROM python:3
+
+LABEL maintainer="bp-team"
 
 WORKDIR /usr/src/app
 
