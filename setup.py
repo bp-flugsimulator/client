@@ -14,9 +14,9 @@ def get_requirements(file):
     -------
         An array of dependencies.
     """
-
-    return parse_requirements(file, session="r")
-
+    install_reqs = parse_requirements(file, session="r")
+    install_reqs_list = [str(ir.req) for ir in install_reqs]
+    return filter(lambda x: x is not None, install_reqs_list) 
 
 setup(
     name="bp-flugsimulator-client",
