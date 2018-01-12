@@ -127,14 +127,12 @@ class TestCommands(unittest.TestCase):
             prog = "/bin/sh"
             args = ["-c", "sleep 10"]
 
-            @asyncio.coroutine
-            def create_and_cancel_task():
-                task = self.loop.create_task(
-                    client.command.execute(prog, args))
-                task.cancel()
-                yield from asyncio.sleep(0.1)
-                return task.cancelled()
+        @asyncio.coroutine
+        def create_and_cancel_task():
+            task = self.loop.create_task(client.command.execute(prog, args))
+            yield from asyncio.sleep(0.1)
+            task.cancel()
+            result = yield from task
+            return result
 
-            self.assertEqual(True,
-                             self.loop.run_until_complete(
-                                 create_and_cancel_task()))
+        self.assertEqual(-15, self.loop.run_until_complete(create_and_cancel_task()))
