@@ -50,8 +50,16 @@ def execute(path, arguments):
                 raise ValueError("Element in arguments is not a string.")
 
     process = yield from asyncio.create_subprocess_exec(*([path] + arguments))
-    code = yield from process.wait()
-    return code
+
+    try:
+        code = yield from process.wait()
+        return code
+    except asyncio.CancelledError:
+        process.terminate()
+        yield from process.wait()
+        # A negative value -N indicates that the child was terminated by signal
+        # N (Unix only).
+        return process.returncode
 
 
 @Rpc.method
