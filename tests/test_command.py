@@ -118,3 +118,23 @@ class TestCommands(unittest.TestCase):
     def test_online(self):
         result = self.loop.run_until_complete(client.command.online())
         self.assertIsNone(result)
+
+    def test_cancel_execution(self):
+        if os.name == 'nt':
+            prog = "C:\\Windows\\System32\\cmd.exe"
+            args = ["/c", "SLEEP 10"]
+        else:
+            prog = "/bin/sh"
+            args = ["-c", "sleep 10"]
+
+            @asyncio.coroutine
+            def create_and_cancel_task():
+                task = self.loop.create_task(
+                    client.command.execute(prog, args))
+                task.cancel()
+                yield from asyncio.sleep(0.1)
+                return task.cancelled()
+
+            self.assertEqual(True,
+                             self.loop.run_until_complete(
+                                 create_and_cancel_task()))

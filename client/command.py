@@ -38,6 +38,8 @@ def execute(path, arguments):
     Returns
     -------
     Method name, exit code of the process and the pid from the master table.
+    A negative value -N indicates that the child was terminated by signal N
+    (Unix only).
     """
     if not isinstance(path, str):
         raise ValueError("Path to program is not a string.")
@@ -57,9 +59,6 @@ def execute(path, arguments):
     except asyncio.CancelledError:
         process.terminate()
         yield from process.wait()
-        # A negative value -N indicates that the child was terminated by signal
-        # N (Unix only).
-        return process.returncode
 
 
 @Rpc.method

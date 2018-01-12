@@ -124,7 +124,7 @@ if __name__ == "__main__":
     # install all other dependencies
     with open('requirements.txt') as requirements:
         for library in requirements:
-            # if github dependecy only install from file
+            # if github dependency only install from file
             if 'git+https://github.com/' in library:
                 library = library.replace('git+https://github.com/', '')
                 library = library.replace('/', '-')
