@@ -137,6 +137,6 @@ class TestCommands(unittest.TestCase):
             result = yield from task
             return result
 
-        self.assertEqual(exit_code,
-                         self.loop.run_until_complete(
-                             create_and_cancel_task()))
+        self.assertEqual(
+            'Process got canceled and returned {}.'.format(exit_code),
+            self.loop.run_until_complete(create_and_cancel_task()))
