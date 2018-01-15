@@ -59,7 +59,8 @@ def execute(path, arguments):
     except asyncio.CancelledError:
         process.terminate()
         yield from process.wait()
-        return process.returncode
+        return 'Process got canceled and returned {}.'.format(
+            process.returncode)
 
 
 @Rpc.method
