@@ -123,7 +123,7 @@ class TestCommands(unittest.TestCase):
         if os.name == 'nt':
             prog = "C:\\Windows\\System32\\cmd.exe"
             args = ["/c", "SLEEP 10"]
-            exit_code = 0
+            exit_code = 512
         else:
             prog = "/bin/sh"
             args = ["-c", "sleep 10"]
