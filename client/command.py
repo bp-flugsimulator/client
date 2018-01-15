@@ -6,6 +6,7 @@ import asyncio
 import os
 import platform
 import subprocess
+import signal
 
 from utils import Rpc
 
@@ -51,13 +52,22 @@ def execute(path, arguments):
             if not isinstance(arg, str):
                 raise ValueError("Element in arguments is not a string.")
 
-    process = yield from asyncio.create_subprocess_exec(*([path] + arguments))
+    if platform.system() == "Windows":
+        process = yield from asyncio.create_subprocess_exec(
+            *([path] + arguments),
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+    else:
+        process = yield from asyncio.create_subprocess_exec(
+            *([path] + arguments))
 
     try:
         code = yield from process.wait()
         return code
     except asyncio.CancelledError:
-        process.terminate()
+        if platform.system() == "Windows":
+            process.send_signal(signal.CTRL_C_EVENT)
+        else:
+            process.terminate()
         yield from process.wait()
         return 'Process got canceled and returned {}.'.format(
             process.returncode)
