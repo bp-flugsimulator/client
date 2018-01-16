@@ -15,45 +15,6 @@ from distutils.version import LooseVersion
 import os
 import pip
 
-supported_platforms = [
-    'manylinux1_x86_64', 'manylinux1_i686', 'win32', 'win_amd64'
-]
-
-supported_versions = ['3', '34', '35', '36']
-
-
-def download(lib_name):
-    """
-    Downloads a library to ./libs
-
-    Parameters
-    ----------
-    lib_name: str
-        the name of the library that will be downloaded
-
-    Returns
-    -------
-    nothing
-
-    Exception
-    ---------
-    Raises an Exception if the library can't be
-    downloaded from a local file
-    """
-    if pip.main(['download', lib_name, '-d', './libs']) != 0:
-        raise Exception('could not download ' + lib_name)
-
-    if not 'git+https://github.com/' in lib_name:
-        for platform in supported_platforms:
-            for version in supported_versions:
-                if pip.main([
-                        'download', '--only-binary=:all:', '--platform',
-                        platform, '--python-version', version, lib_name, '-d',
-                        './libs'
-                ]) != 0:
-                    #raise Exception('could not download ' + lib_name)
-                    pass
-
 
 def install_local(lib_name):
     """
@@ -78,6 +39,28 @@ def install_local(lib_name):
             'file://' + os.getcwd() + '/libs'
     ]) != 0:
         raise Exception('could not install ' + lib_name + ' from file')
+
+
+def download(lib_name):
+    """
+    Downloads a library to ./libs
+
+    Parameters
+    ----------
+    lib_name: str
+        the name of the library that will be downloaded
+
+    Returns
+    -------
+    nothing
+
+    Exception
+    ---------
+    Raises an Exception if the library can't be
+    downloaded from a local file
+    """
+    if pip.main(['download', lib_name, '-d', './libs']) != 0:
+        raise Exception('could not download ' + lib_name)
 
 
 def install(lib_name):
@@ -111,21 +94,19 @@ def install(lib_name):
 
 
 if __name__ == "__main__":
-    # from requirements.txt in ./libs
-    if len(argv) > 1 and argv[1] == '--update':
-        download('pip')
-        download('wheel')
-        with open('requirements.txt') as requirements:
-            for library in requirements:
-                download(library)
-
-    # update pip from local file
+    # update pip to local file
     if LooseVersion(pip.__version__) < LooseVersion('8.0.0'):
         if pip.main([
                 'install', '--upgrade', 'pip', '--no-index', '--find-links',
                 'file://' + os.getcwd() + '/libs'
         ]) != 0:
             raise Exception('could not install pip from file')
+
+    # from requirements.txt in ./libs
+    if len(argv) > 1 and argv[1] == '--update':
+        with open('requirements.txt') as requirements:
+            for library in requirements:
+                download(library)
 
     # install wheel
     install_local('wheel')

@@ -1,5 +1,7 @@
 FROM python:3
 
+MAINTAINER "https://github.com/bp-flugsimulator"
+
 WORKDIR /usr/src/app
 
 COPY requirements.txt ./

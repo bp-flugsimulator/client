@@ -3,55 +3,28 @@ This module contains all available rpc commands.
 """
 
 import asyncio
-import uptime as upt
 import os
 import platform
-from utils import Rpc
-
+import subprocess
+import signal
 import shutil
 
-
-@Rpc.method
-@asyncio.coroutine
-def uptime(sid):
-    """
-    RPC command which returns the current uptime of this client.
-
-    Arguments
-    ---------
-    sid: int
-        Id of the current client
-
-    Returns
-    -------
-    json consisting of the methodname, uptime and sid
-    """
-    return {"method": "uptime", "uptime": str(upt.uptime()), "sid": sid}
+from utils import Rpc
 
 
 @Rpc.method
 @asyncio.coroutine
-def boottime(sid):
+def online():
     """
-    RPC command which returns the boottime of this client. The boottime has to
-    following format YYYY-MM-DD hh:mm:ss
-
-    Arguments
-    ---------
-    sid: int
-        Id of the current client
-
-    Returns
-    -------
-    json consisting of the methodname, boottime and sid
+    Function that can be used by the master to
+    determine if the slave is online
     """
-    string_boottime = upt.boottime().strftime("%Y-%m-%d %X")
-    return {"method": "boottime", "boottime": string_boottime, "sid": sid}
+    pass
 
 
 @Rpc.method
 @asyncio.coroutine
-def execute(pid, path, arguments):
+def execute(path, arguments):
     """
     Executes a subprocess and returns the exit code.
 
@@ -67,6 +40,8 @@ def execute(pid, path, arguments):
     Returns
     -------
     Method name, exit code of the process and the pid from the master table.
+    A negative value -N indicates that the child was terminated by signal N
+    (Unix only).
     """
     if not isinstance(path, str):
         raise ValueError("Path to program is not a string.")
@@ -78,15 +53,30 @@ def execute(pid, path, arguments):
             if not isinstance(arg, str):
                 raise ValueError("Element in arguments is not a string.")
 
-    process = yield from asyncio.create_subprocess_exec(*([path] + arguments))
-    code = yield from process.wait()
+    if platform.system() == "Windows":
+        process = yield from asyncio.create_subprocess_exec(
+            *([path] + arguments),
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+    else:
+        process = yield from asyncio.create_subprocess_exec(
+            *([path] + arguments))
 
-    return {"method": "execute", "code": code, "pid": pid}
+    try:
+        code = yield from process.wait()
+        return code
+    except asyncio.CancelledError:
+        if platform.system() == "Windows":
+            process.send_signal(signal.CTRL_C_EVENT)
+        else:
+            process.terminate()
+        yield from process.wait()
+        return 'Process got canceled and returned {}.'.format(
+            process.returncode)
 
 
 @Rpc.method
 @asyncio.coroutine
-def move_file(fid, sourcePath, destinationPath):
+def move_file(source_path, destination_path):
     """
     Moves and renames a given file to a given destination.
 
@@ -104,29 +94,59 @@ def move_file(fid, sourcePath, destinationPath):
     -------
     Method name, error of the process and the fid from the master table.
     """
-    if not isinstance(sourcePath, str):
+
+    if not isinstance(source_path, str):
         raise ValueError("source Path is not a string!")
-    if not isinstance(destinationPath, str):
+    if not isinstance(destination_path, str):
         raise ValueError("destination Path is not a string!")
     else:
         """
-        if dest does not exist:
-            if the src and dest are a files:
-                copy src to dest and rename src
-                shutil.copy(src, dest)
-            if the src is a  file and the dest is a folder:
-                copy src in dest folder
-                shutil.copy(src, dest)
-            if the src and dest are a folders
-                copy the src folder in the dst folder
-            if the src is a folder and the dst is a file:
-                throw error
-
+        Differentiate between file and folder:
+        dest.ending = file
+        dest        = folder
+        ---------------------
+        Logic of copy Program:
+        ---------------------
+        if dest = src:
+            return
+        if dest is folder:
+            if dest does not exist:
+                ? error invalid Path ?
+                ? if parent folder of dest exists:
+                    create folder -> (dest exists)
+                else (no parent of dest):
+                    error invalid Path ?
+            else (dest exists):
+                if src is file:
+                    copy src file in dest folder
+                if src is folder:
+                    ? replace src folder with dest folder ?
+                    ? place src folder in dest folder ?
+                else
+                    error invalid src Path
+        if dest is file:
+            if dest does not exist:
+                rename and copy src to dest
+            else (dest exists):
+                replace dest with src
+        else:
+            eror invalid dest Path
         """
-        dir = shutil.copy(sourcePath, destinationPath)
-        # os.link(sourcePath, destinationPath)
+        if source_path == destination_path:
+            return {"method": "move_file"}
 
-    return {"method": "move_file", "error": os.error, "fid": fid}
+        for src_dir, dirs, files in os.walk(source_path):
+            dst_dir = src_dir.replace(source_path, destination_path, 1)
+            if not os.path.exists(dst_dir):
+                os.makedirs(dst_dir)
+            for file_ in files:
+                src_file = os.path.join(src_dir, file_)
+                dst_file = os.path.join(dst_dir, file_)
+                if os.path.exists(dst_file):
+                    os.rename(dst_file, dst_dir + ".FSIM_BACKUP")
+                shutil.move(src_file, dst_dir)
+
+    return {"method": "move_file", "error": os.error}
 
 
 @Rpc.method
@@ -136,6 +156,6 @@ def shutdown():
     shuts down the system
     """
     if platform.system() == "Windows":
-        os.system("shutdown -s -t 0")
+        subprocess.call(['shutdown', '-s', '-t', '0'])
     else:
-        os.system("shutdown -h now")
+        subprocess.call(['shutdown', '-h', 'now'])

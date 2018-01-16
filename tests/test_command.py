@@ -26,48 +26,32 @@ class TestCommands(unittest.TestCase):
             if isinstance(getattr(client.command, func), types.FunctionType):
                 self.assertEqual(getattr(client.command, func), Rpc.get(func))
 
-    def test_uptime(self):
-        time = self.loop.run_until_complete(client.command.uptime(0))
-        uptime_time = float(time['uptime'])
-        uptime_sid = int(time['sid'])
-        self.assertEqual(uptime_sid, 0)
-        self.assertTrue(isinstance(time['sid'], int))
-
-    def test_boottime(self):
-        import datetime
-        time = self.loop.run_until_complete(client.command.boottime(0))
-        boottime_time = datetime.datetime.strptime(time['boottime'],
-                                                   "%Y-%m-%d %X")
-        boottime_sid = int(time['sid'])
-        self.assertEqual(boottime_sid, 0)
-        self.assertTrue(isinstance(time['sid'], int))
-
     def test_execution_wrong_path_object(self):
         self.assertRaises(
             ValueError,
             self.loop.run_until_complete,
-            client.command.execute(0, "calcs.exe", "this is a arguments list"),
+            client.command.execute("calcs.exe", "this is a arguments list"),
         )
 
     def test_execution_wrong_prog_object(self):
         self.assertRaises(
             ValueError,
             self.loop.run_until_complete,
-            client.command.execute(0, ["calcs.exe"], []),
+            client.command.execute(["calcs.exe"], []),
         )
 
     def test_execution_wrong_arguments_elements(self):
         self.assertRaises(
             ValueError,
             self.loop.run_until_complete,
-            client.command.execute(0, "calcs.exe", [1, 2, 34]),
+            client.command.execute("calcs.exe", [1, 2, 34]),
         )
 
     def test_execution_not_existing_prog(self):
         self.assertRaises(
             FileNotFoundError,
             self.loop.run_until_complete,
-            client.command.execute(0, "calcs.exe", []),
+            client.command.execute("calcs.exe", []),
         )
 
     def test_execution_echo_shell(self):
@@ -78,11 +62,9 @@ class TestCommands(unittest.TestCase):
             prog = "/bin/sh"
             args = ["-c", "echo $(date)"]
 
-        result = {"code": 0, "method": "execute", "pid": 0}
         self.assertEqual(
-            result,
-            self.loop.run_until_complete(
-                client.command.execute(0, prog, args)),
+            0,
+            self.loop.run_until_complete(client.command.execute(prog, args)),
         )
 
     def test_move_file(self):
@@ -95,7 +77,7 @@ class TestCommands(unittest.TestCase):
 
         open(file_name, "w").close()
         self.loop.run_until_complete(
-            client.command.move_file(0, file_name, myfile_name))
+            client.command.move_file(file_name, myfile_name))
         self.assertTrue(os.path.isfile(myfile_name))
         os.remove(file_name)
         os.remove(myfile_name)
@@ -104,19 +86,19 @@ class TestCommands(unittest.TestCase):
         self.assertRaises(
             ValueError,
             self.loop.run_until_complete,
-            client.command.move_file(0, 1, "file.txt"),
+            client.command.move_file(1, "file.txt"),
         )
 
     def test_move_file_wrong_destinationPath_object(self):
         self.assertRaises(
             ValueError,
             self.loop.run_until_complete,
-            client.command.move_file(0, "file.txt", 1),
+            client.command.move_file("file.txt", 1),
         )
 
     def test_move_file_no_file_exists(self):
         self.assertRaises(FileNotFoundError, self.loop.run_until_complete,
-                          client.command.move_file(0, "file.txt",
+                          client.command.move_file("file.txt",
                                                    "file_link.test"))
 
     def test_move_file_already_exists(self):
@@ -129,6 +111,29 @@ class TestCommands(unittest.TestCase):
             os.remove(myfile_name)
         open(myfile_name, "w").close()
         self.assertRaises(FileExistsError, self.loop.run_until_complete,
-                          client.command.move_file(0, file_name, myfile_name))
+                          client.command.move_file(file_name, myfile_name))
         os.remove(file_name)
         os.remove(myfile_name)
+
+    def test_online(self):
+        result = self.loop.run_until_complete(client.command.online())
+        self.assertIsNone(result)
+
+    def test_cancel_execution(self):
+        if os.name == 'nt':
+            prog = "C:\\Windows\\System32\\cmd.exe"
+            args = ["/c", "SLEEP 10"]
+        else:
+            prog = "/bin/sh"
+            args = ["-c", "sleep 10"]
+
+        @asyncio.coroutine
+        def create_and_cancel_task():
+            task = self.loop.create_task(client.command.execute(prog, args))
+            yield from asyncio.sleep(0.1)
+            task.cancel()
+            result = yield from task
+            return result
+
+        self.assertTrue('Process got canceled and returned' in
+                        self.loop.run_until_complete(create_and_cancel_task()))
