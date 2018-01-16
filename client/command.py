@@ -8,6 +8,8 @@ import os
 import platform
 from utils import Rpc
 
+import shutil
+
 
 @Rpc.method
 @asyncio.coroutine
@@ -103,11 +105,26 @@ def move_file(fid, sourcePath, destinationPath):
     Method name, error of the process and the fid from the master table.
     """
     if not isinstance(sourcePath, str):
-        raise ValueError("source path is not a string!")
+        raise ValueError("source Path is not a string!")
     if not isinstance(destinationPath, str):
-        raise ValueError("destination path is not a string!")
+        raise ValueError("destination Path is not a string!")
     else:
-        os.link(sourcePath, destinationPath)
+        """
+        if dest does not exist:
+            if the src and dest are a files:
+                copy src to dest and rename src
+                shutil.copy(src, dest)
+            if the src is a  file and the dest is a folder:
+                copy src in dest folder
+                shutil.copy(src, dest)
+            if the src and dest are a folders
+                copy the src folder in the dst folder
+            if the src is a folder and the dst is a file:
+                throw error
+
+        """
+        dir = shutil.copy(sourcePath, destinationPath)
+        # os.link(sourcePath, destinationPath)
 
     return {"method": "move_file", "error": os.error, "fid": fid}
 
