@@ -37,6 +37,7 @@ def main():
     """
     Main function which will called if this is the main script.
     """
+
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument(
         'host',
@@ -65,6 +66,19 @@ def main():
         "notifications",
     )
 
+    root = logging.getLogger()
+    root.setLevel(logging.DEBUG)
+
+    ch = logging.StreamHandler(sys.stdout)
+    ch.setLevel(logging.DEBUG)
+
+    formatter = logging.Formatter(
+        "[CLIENT] [%(asctime)s]: %(message)s",
+        datefmt='%M:%S',
+    )
+    ch.setFormatter(formatter)
+    root.addHandler(ch)
+
     print("Starting client.")
 
     if os.name == 'nt':
@@ -79,17 +93,4 @@ def main():
 
 
 if __name__ == "__main__":
-    root = logging.getLogger()
-    root.setLevel(logging.DEBUG)
-
-    ch = logging.StreamHandler(sys.stdout)
-    ch.setLevel(logging.DEBUG)
-
-    formatter = logging.Formatter(
-        "[CLIENT] [%(asctime)s]: %(message)s",
-        datefmt='%M:%S',
-    )
-    ch.setFormatter(formatter)
-    root.addHandler(ch)
-
     main()
