@@ -1,6 +1,7 @@
 FROM python:3
 
 MAINTAINER "https://github.com/bp-flugsimulator"
+ENV PYTHONUNBUFFERED 0
 
 WORKDIR /usr/src/app
 
