@@ -7,7 +7,6 @@ import os
 import platform
 import subprocess
 import psutil
-import shutil
 
 from utils import Rpc
 
