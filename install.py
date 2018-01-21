@@ -113,42 +113,42 @@ def download(lib_name):
 
 if __name__ == "__main__":
     # set up argument parser
-    parser = ArgumentParser(
-        description='Uptdates and installs packages needed for the client.')
-    parser.add_argument(
+    PARSER = ArgumentParser(
+        description='Updates and installs packages needed for the client.')
+    PARSER.add_argument(
         '--upgrade',
         help='installs all packages from ./libs',
         action='store_const',
         const=True)
-    parser.add_argument(
+    PARSER.add_argument(
         '--update',
         help='downloads all packages from requirements.txt to ./libs',
         action='store_const',
         const=True)
 
-    args = parser.parse_args()
+    ARGS = PARSER.parse_args()
 
-    if not (args.update or args.upgrade):
-        parser.print_help()
+    if not (ARGS.update or ARGS.upgrade):
+        PARSER.print_help()
 
     # select requirements file
     if system() == 'Windows':
-        requirements_file = 'win_requirements.txt'
+        REQUIREMENTS_FILE = 'win_requirements.txt'
     elif system() == 'Linux':
         if architecture()[0] == '64bit':
-            requirements_file = 'linux_requirements.txt'
+            REQUIREMENTS_FILE = 'linux_requirements.txt'
         else:
             stderr.write(architecture()[0] +
                          ' is not officially supported but may work\n')
     else:
         stderr.write(system() + ' is not officially supported but may work\n')
 
-    if args.update:
-        with open(requirements_file) as requirements:
+    if ARGS.update:
+        with open(REQUIREMENTS_FILE) as requirements:
             for library in requirements:
                 download(library)
 
-    if args.upgrade:
-        with open(requirements_file) as requirements:
+    if ARGS.upgrade:
+        with open(REQUIREMENTS_FILE) as requirements:
             for library in requirements:
                 install(library)
