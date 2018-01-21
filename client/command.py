@@ -56,7 +56,7 @@ def execute(path, arguments):
     if platform.system() == "Windows":
         process = yield from asyncio.create_subprocess_exec(
             *([path] + arguments),
-            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
+            creationflags=subprocess.CREATE_NEW_CONSOLE)
     else:
         process = yield from asyncio.create_subprocess_exec(
             *([path] + arguments))
@@ -69,6 +69,7 @@ def execute(path, arguments):
             process.send_signal(signal.CTRL_C_EVENT)
         else:
             process.terminate()
+        
         yield from process.wait()
         return 'Process got canceled and returned {}.'.format(
             process.returncode)
