@@ -1,8 +1,7 @@
 """
 This script is used to install all requirements listed in requirements.txt from
 ./libs. If a library is not present, use the flag "--update" to download the
-system specific version from the internet into ./libs and use the flag "--upgrade"
-for install.
+system specific version from the internet into ./libs and use the flag "--upgrade" for install.
 
 Example
 -------
@@ -41,7 +40,7 @@ def git_to_filename(git_url):
             yield file
 
 
-def install_local(lib_name):
+def install(lib_name):
     """
     Installes a library from a local file in ./libs
 
@@ -59,13 +58,27 @@ def install_local(lib_name):
     Raises an Exception if the library can't be installed
     from a local file
     """
-    args = [
-        'install',
-        lib_name,
-        '--no-index',
-        '--find-links',
-        'file://' + os.getcwd() + '/libs',
-    ]
+    if 'git+https://github.com/' in library:
+        file = next(git_to_filename(library))
+        if file is None:
+            raise Exception('could not install ' + lib_name +
+                            ' from file, because file does not exist.')
+        else:
+            args = [
+                'install',
+                '--upgrade',
+                '--force-reinstall',
+                os.path.join(os.getcwd(), 'libs', file),
+            ]
+    else:
+        args = [
+            'install',
+            lib_name,
+            '--no-index',
+            '--find-links',
+            'file://' + os.getcwd() + '/libs',
+        ]
+
     if pip.main(args) != 0:
         raise Exception('could not install ' + lib_name + ' from file')
 
@@ -113,43 +126,30 @@ if __name__ == "__main__":
         const=True)
 
     args = parser.parse_args()
+    
+    if not (args.update or args.upgrade):
+        parser.print_help()
 
-    if args.update:
-        # from requirements.txt in ./libs
-        if len(argv) > 1 and argv[1] == '--update':
-            with open('requirements.txt') as requirements:
-                for library in requirements:
-                    download(library)
 
-    # update pip to local file
-    if args.upgrade:
-        if LooseVersion(pip.__version__) < LooseVersion('8.0.0'):
-            install_local('pip')
 
-        # install wheel
-        install_local('wheel')
-
-        # on windows install pypiwin32
-        if system() == 'Windows':
-            install_local('pypiwin32')
-        elif system() == 'Linux':
-            if architecture()[0] != '64bit':
-                stderr.write(architecture()[0] +
-                             ' is not officially supported but may work\n')
+    # select requirements file
+    if system() == 'Windows':
+        requirements_file = 'win_requirements.txt'
+    elif system() == 'Linux':
+        if architecture()[0] == '64bit':
+            requirements_file = 'linux_requirements.txt'
         else:
-            stderr.write(
-                system() + ' is not officially supported but may work\n')
-
-        # install all other dependencies
-        with open('requirements.txt') as requirements:
+            stderr.write(architecture()[0] +
+                         ' is not officially supported but may work\n')
+    else:
+        stderr.write(system() + ' is not officially supported but may work\n')
+    
+    if args.update:
+        with open(requirements_file) as requirements:
             for library in requirements:
-                if 'git+https://github.com/' in library:
-                    generator = git_to_filename(library)
-                    pip.main([
-                        'install',
-                        '--upgrade',
-                        '--force-reinstall',
-                        os.path.join(os.getcwd(), 'libs', next(generator)),
-                    ])
-                else:
-                    install_local(library),
+                download(library)
+
+    if args.upgrade:
+        with open(requirements_file) as requirements:
+            for library in requirements:
+                install(library)
