@@ -1,7 +1,8 @@
 """
-This script is used to install all requirements listed in requirements.txt from
-./libs. If a library is not present, use the flag "--update" to download the
-system specific version from the internet into ./libs and use the flag "--upgrade" for install.
+This script is used to install all requirements listed in requirements.txt
+from ./libs. If a library is not present, use the flag "--update" to download
+the system specific version from the internet into ./libs and use the flag
+"--upgrade" for install.
 
 Example
 -------
@@ -9,13 +10,13 @@ Example
     $python install.py --upgrade
 """
 
-from sys import stderr, argv
 from platform import system, architecture
-from distutils.version import LooseVersion
+from os import listdir, getcwd, remove
+from os.path import join
+from argparse import ArgumentParser
+from sys import stderr
 
-import os
 import pip
-import argparse
 
 
 def git_to_filename(git_url):
@@ -35,7 +36,7 @@ def git_to_filename(git_url):
     lib_file = git_url.replace('git+https://github.com/', '')
     lib_file = lib_file.replace('/', '-')
     lib_file = lib_file.replace('\n', '')
-    for file in os.listdir('libs'):
+    for file in listdir('libs'):
         if lib_file in file:
             yield file
 
@@ -68,7 +69,7 @@ def install(lib_name):
                 'install',
                 '--upgrade',
                 '--force-reinstall',
-                os.path.join(os.getcwd(), 'libs', file),
+                join(getcwd(), 'libs', file),
             ]
     else:
         args = [
@@ -76,7 +77,7 @@ def install(lib_name):
             lib_name,
             '--no-index',
             '--find-links',
-            'file://' + os.getcwd() + '/libs',
+            'file://' + getcwd() + '/libs',
         ]
 
     if pip.main(args) != 0:
@@ -103,7 +104,7 @@ def download(lib_name):
     """
     if 'git+https://github.com/' in library:
         for file in git_to_filename(lib_name):
-            os.remove(os.path.join('libs', file))
+            remove(join('libs', file))
             print('removed ', file)
 
     if pip.main(['download', lib_name, '-d', './libs']) != 0:
@@ -112,7 +113,7 @@ def download(lib_name):
 
 if __name__ == "__main__":
     # set up argument parser
-    parser = argparse.ArgumentParser(
+    parser = ArgumentParser(
         description='Uptdates and installs packages needed for the client.')
     parser.add_argument(
         '--upgrade',
@@ -126,11 +127,9 @@ if __name__ == "__main__":
         const=True)
 
     args = parser.parse_args()
-    
+
     if not (args.update or args.upgrade):
         parser.print_help()
-
-
 
     # select requirements file
     if system() == 'Windows':
@@ -143,7 +142,7 @@ if __name__ == "__main__":
                          ' is not officially supported but may work\n')
     else:
         stderr.write(system() + ' is not officially supported but may work\n')
-    
+
     if args.update:
         with open(requirements_file) as requirements:
             for library in requirements:
