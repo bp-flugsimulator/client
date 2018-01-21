@@ -6,7 +6,7 @@ import asyncio
 import os
 import platform
 import subprocess
-import signal
+import psutil
 import shutil
 
 from utils import Rpc
@@ -66,10 +66,11 @@ def execute(path, arguments):
         return code
     except asyncio.CancelledError:
         if platform.system() == "Windows":
-            process.send_signal(signal.CTRL_C_EVENT)
-        else:
-            process.terminate()
-        
+            parent = psutil.Process(process.pid)
+            for child in parent.children(recursive=True):
+                child.terminate()
+
+        process.terminate()
         yield from process.wait()
         return 'Process got canceled and returned {}.'.format(
             process.returncode)

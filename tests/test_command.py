@@ -123,7 +123,7 @@ class TestCommands(unittest.TestCase):
     def test_cancel_execution(self):
         if os.name == 'nt':
             prog = "C:\\Windows\\System32\\cmd.exe"
-            args = ["/c", "SLEEP 10"]
+            args = ["/c", "TIMEOUT 10>nul"]
         else:
             prog = "/bin/sh"
             args = ["-c", "sleep 10"]
