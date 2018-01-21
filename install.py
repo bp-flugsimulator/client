@@ -59,7 +59,13 @@ def install_local(lib_name):
     Raises an Exception if the library can't be installed
     from a local file
     """
-    args = ['install', lib_name, '--no-index', '--find-links', 'file://' + os.getcwd() + '/libs',] 
+    args = [
+        'install',
+        lib_name,
+        '--no-index',
+        '--find-links',
+        'file://' + os.getcwd() + '/libs',
+    ]
     if pip.main(args) != 0:
         raise Exception('could not install ' + lib_name + ' from file')
 
@@ -114,7 +120,7 @@ if __name__ == "__main__":
             with open('requirements.txt') as requirements:
                 for library in requirements:
                     download(library)
-   
+
     # update pip to local file
     if args.upgrade:
         if LooseVersion(pip.__version__) < LooseVersion('8.0.0'):
@@ -128,15 +134,22 @@ if __name__ == "__main__":
             install_local('pypiwin32')
         elif system() == 'Linux':
             if architecture()[0] != '64bit':
-                stderr.write(architecture()[0] + ' is not officially supported but may work\n')
+                stderr.write(architecture()[0] +
+                             ' is not officially supported but may work\n')
         else:
-            stderr.write(system() + ' is not officially supported but may work\n')
+            stderr.write(
+                system() + ' is not officially supported but may work\n')
 
         # install all other dependencies
         with open('requirements.txt') as requirements:
             for library in requirements:
                 if 'git+https://github.com/' in library:
                     generator = git_to_filename(library)
-                    pip.main(['install', '--upgrade', '--force-reinstall', os.path.join(os.getcwd(),'libs',next(generator)),])
+                    pip.main([
+                        'install',
+                        '--upgrade',
+                        '--force-reinstall',
+                        os.path.join(os.getcwd(), 'libs', next(generator)),
+                    ])
                 else:
                     install_local(library),
