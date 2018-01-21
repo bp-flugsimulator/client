@@ -14,7 +14,7 @@ environment:
 
 
 install:
-  - "%PYTHON%\\python.exe install.py"
+  - "%PYTHON%\\python.exe install.py --upgrade"
 
 build: off
 
