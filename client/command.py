@@ -6,7 +6,6 @@ import asyncio
 import os
 import platform
 import subprocess
-import psutil
 
 from utils import Rpc
 
@@ -64,6 +63,7 @@ def execute(path, arguments):
         return code
     except asyncio.CancelledError:
         if platform.system() == "Windows":
+            import psutil
             parent = psutil.Process(process.pid)
             for child in parent.children(recursive=True):
                 child.terminate()
