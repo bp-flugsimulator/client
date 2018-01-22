@@ -171,6 +171,26 @@ class TestCommands(unittest.TestCase):
             client.command.move_file("source.txt", "dest.txt"),
         )
 
+    def test_move_file_destination_not_directory(self):
+        file_name = 'file.txt'
+        source = os.path.abspath('./sourcefolder3/')
+        if not os.path.isdir(source):
+            os.makedirs(source)
+        dest = os.path.abspath('./destfolder3/')
+        if not os.path.isdir(dest):
+            os.makedirs(dest)
+
+        open(os.path.join(source, file_name), "w").close()
+        open(os.path.join(dest, file_name), 'w').close()
+
+        self.assertRaises(
+            NotADirectoryError,
+            self.loop.run_until_complete,
+            client.command.move_file(source, os.path.join(dest, file_name)),
+        )
+        shutil.rmtree(source)
+        shutil.rmtree(dest)
+
     """
     def test_move_file_no_file_exists(self):
         self.assertRaises(FileNotFoundError, self.loop.run_until_complete,
