@@ -1,6 +1,7 @@
 import unittest
 import asyncio
 import os
+import shutil
 
 from utils import Rpc
 import client.command
@@ -124,12 +125,11 @@ class TestCommands(unittest.TestCase):
         source = './sourcefolder/'
         if not os.path.isdir(source):
             os.makedirs(source)
-        #     os.remove(source)
         dest = './destfolder/'
         if not os.path.isdir(dest):
             os.makedirs(dest)
         #     os.remove(dest)
-        back = file_name+'_BACK'
+        back = file_name + '_BACK'
         # if not os.path.isfile(dest+back):
         #     os.remove(back)
 
@@ -142,9 +142,8 @@ class TestCommands(unittest.TestCase):
             self.loop.run_until_complete,
             client.command.move_file(source, dest),
         )
-        # os.remove(source)
-        # os.remove(dest)
-        # os.remove(back)
+        shutil.rmtree(source)
+        shutil.rmtree(dest)
 
     def test_move_file_source_does_not_exist(self):
         self.assertRaises(

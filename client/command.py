@@ -125,7 +125,9 @@ def move_file(source_path, destination_path):
             # destination file with name of source exists
             if os.path.isfile(destination_path):
                 if os.path.exists(backup_file_name):
-                    raise FileExistsError
+                    raise FileExistsError(errno.ENOENT,
+                                          os.strerror(errno.ENOENT),
+                                          backup_file_name)
                 else:
                     os.rename(destination_path, backup_file_name)
             # finally (rename and) link source to destination
@@ -145,7 +147,9 @@ def move_file(source_path, destination_path):
                     # if file exists rename old one
                     if os.path.exists(dst_file):
                         if os.path.exists(backup_file_name):
-                            raise FileExistsError
+                            raise FileExistsError(errno.ENOENT,
+                                                  os.strerror(errno.ENOENT),
+                                                  backup_file_name)
                         else:
                             os.rename(dst_file, backup_file_name)
                     # (rename and) link source to destination
