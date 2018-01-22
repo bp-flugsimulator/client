@@ -149,11 +149,11 @@ def move_file(source_path, destination_path):
                     destination_path,
                 )
             if os.path.isdir(dst_dir):
-                if os.path.isfile(dst_dir + backup_file_ending):
+                if os.path.isdir(dst_dir + backup_file_ending):
                     FileExistsError(
                         errno.EEXIST,
                         os.strerror(errno.EEXIST),
-                        backup_file_name,
+                        dst_dir + backup_file_ending,
                     )
                 os.rename(
                     dst_dir,
