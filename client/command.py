@@ -6,6 +6,7 @@ import asyncio
 import os
 import platform
 import subprocess
+import errno
 
 from utils import Rpc
 
@@ -122,34 +123,49 @@ def move_file(source_path, destination_path):
                 destination_path = os.path.join(destination_path, source_file)
             backup_file_name = destination_path + backup_file_ending
             # destination file with name of source exists
-            if os.path.isfile(destination_path):
+            if os.path.islink(destination_path):
+                os.remove(destination_path)
+            elif os.path.isfile(destination_path):
                 os.rename(destination_path, backup_file_name)
             # finally (rename and) link source to destination
             os.link(source_path, destination_path)
 
         # source is folder
         elif os.path.isdir(source_path):
+            dst_dir = os.path.join(
+                destination_path,
+                os.path.basename(source_path),
+            )
+            if os.path.isfile(destination_path):
+                raise NotADirectoryError(
+                    errno.ENOTDIR,
+                    os.strerror(errno.ENOTDIR),
+                    destination_path,
+                )
+            if os.path.isdir(dst_dir):
+                os.rename(
+                    dst_dir,
+                    dst_dir + backup_file_ending,
+                )
             for src_dir, _, files in os.walk(source_path):
-                dst_dir = src_dir.replace(source_path, destination_path, 1)
-                print(dst_dir)
+                dst_dir = os.path.join(
+                    destination_path,
+                    os.path.basename(src_dir),
+                )
                 # If source folder does not exist in destination create it.
-                # This will create all missing folders, so if dest path is wrong
-                # it will still create all folders
-                # (may be unwanted and hard to cleanup)
                 if not os.path.exists(dst_dir):
                     os.makedirs(dst_dir)
                 for file_ in files:
                     src_file = os.path.join(src_dir, file_)
                     dst_file = os.path.join(dst_dir, file_)
-                    backup_file_name = dst_file + backup_file_ending
-                    # if file exists rename old one
-                    if os.path.exists(
-                            dst_file) and not os.path.exists(backup_file_name):
-                        os.rename(dst_file, backup_file_name)
-                    # (rename and) link source to destination
+                    # link source to destination
                     os.link(src_file, dst_file)
-                    # uhm and i dont know what to return lul
-        return "File " + source_path + "moved to" + destination_path
+        else:
+            raise FileNotFoundError(
+                errno.ENOENT,
+                os.strerror(errno.ENOENT),
+                source_path,
+            )
 
 
 @Rpc.method
