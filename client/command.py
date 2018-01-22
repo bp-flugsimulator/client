@@ -135,7 +135,6 @@ def move_file(source_path, destination_path):
         elif os.path.isdir(source_path):
             for src_dir, _, files in os.walk(source_path):
                 dst_dir = src_dir.replace(source_path, destination_path, 1)
-                print(dst_dir)
                 # If source folder does not exist in destination create it.
                 if not os.path.exists(dst_dir):
                     os.makedirs(dst_dir)

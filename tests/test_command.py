@@ -120,31 +120,31 @@ class TestCommands(unittest.TestCase):
         os.remove(back_file_name)
 
     def test_move_file_backup_exists_error_dir(self):
-        source = "./sourcefolder/"
-        if os.path.isfile(source):
-            os.remove(source)
-        dest = "./destfolder/"
-        if os.path.isfile(dest):
-            os.remove(dest)
-        back = "file.txt_BACK"
-        if os.path.isfile(back):
-            os.remove(back)
-
         file_name = 'file.txt'
-
-        os.makedirs(source)
+        source = './sourcefolder/'
+        if not os.path.isdir(source):
+            os.makedirs(source)
+        #     os.remove(source)
+        dest = './destfolder/'
+        if not os.path.isdir(dest):
+            os.makedirs(dest)
+        #     os.remove(dest)
+        back = file_name+'_BACK'
+        # if not os.path.isfile(dest+back):
+        #     os.remove(back)
 
         open(source + file_name, "w").close()
         open(dest + file_name, "w").close()
-        open(back + back, "w").close()
+        open(dest + back, "w").close()
 
         self.assertRaises(
             FileExistsError,
             self.loop.run_until_complete,
             client.command.move_file(source, dest),
         )
-        os.remove(source)
-        os.remove(dest)
+        # os.remove(source)
+        # os.remove(dest)
+        # os.remove(back)
 
     def test_move_file_source_does_not_exist(self):
         self.assertRaises(
