@@ -79,12 +79,13 @@ def execute(path, arguments):
 @asyncio.coroutine
 def move_file(source_path, destination_path):
     """
-    Moves and renames a given file to a given destination.
+    Function
+    --------
+    Links and renames a given file to a given destination.
+    If the file already exists it will create a BACKUP.
 
     Arguments
     ---------
-    fid: int
-        the file ID from the master table.
     sourcePath: string
         Represents a valid path to an existing file.
     destinationPath: string
@@ -93,7 +94,19 @@ def move_file(source_path, destination_path):
 
     Returns
     -------
-    Method name, error of the process and the fid from the master table.
+    ValueError: -
+        If source or destination are not strings.
+
+    FileExistsError: -
+        If this function is called with BACKUP files in destination
+        and the destionation file already exists.
+
+    NotADirectoryError: -
+        If the function is called with source as a folder and destination
+        as a file.
+
+    FileNotFoundError: -
+        If no source is given or the path is invalid.
     """
 
     if not isinstance(source_path, str):
@@ -105,15 +118,6 @@ def move_file(source_path, destination_path):
         destination_path = os.path.abspath(destination_path)
         # File ending of backup files
         backup_file_ending = "_BACK"
-        """
-        Currently if source is a folder
-        it contents will be linked not the given folder
-        -------------
-        Problem:
-            If this function is called with BACKUP files in destination
-            the function may fail,
-            cause its unable to rename the new BACKUP file
-        """
 
         # source is file
         if os.path.isfile(source_path):
@@ -126,6 +130,7 @@ def move_file(source_path, destination_path):
             if os.path.islink(destination_path):
                 os.remove(destination_path)
             elif os.path.isfile(destination_path):
+                # Backup file name already exists
                 if os.path.exists(backup_file_name):
                     raise FileExistsError(
                         errno.EEXIST,
@@ -138,10 +143,15 @@ def move_file(source_path, destination_path):
 
         # source is folder
         elif os.path.isdir(source_path):
-            dst_dir = os.path.join(
-                destination_path,
+            dest_src = os.path.join(
+                os.path.basename(destination_path),
                 os.path.basename(source_path),
             )
+            dst_dir = src_dir.replace(
+                os.path.basename(source_path),
+                dest_src,
+            )
+            # destination cant be a file if source is folder
             if os.path.isfile(destination_path):
                 raise NotADirectoryError(
                     errno.ENOTDIR,
@@ -149,6 +159,7 @@ def move_file(source_path, destination_path):
                     destination_path,
                 )
             if os.path.isdir(dst_dir):
+                # Backup file name already exits
                 if os.path.exists(dst_dir + backup_file_ending):
                     raise FileExistsError(
                         errno.EEXIST,
@@ -178,6 +189,14 @@ def move_file(source_path, destination_path):
                 os.strerror(errno.ENOENT),
                 source_path,
             )
+
+
+@Rpc.method
+@asyncio.coroutine
+def restore(destination_path):
+    """
+
+    """
 
 
 @Rpc.method
