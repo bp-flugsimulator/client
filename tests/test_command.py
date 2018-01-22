@@ -101,7 +101,6 @@ class TestCommands(unittest.TestCase):
 
         shutil.rmtree(source)
         shutil.rmtree(dest)
-        shutil.rmtree(dest + '_BACK')
 
     def test_move_file_wrong_sourcePath_object(self):
         self.assertRaises(
@@ -145,7 +144,8 @@ class TestCommands(unittest.TestCase):
         back = '_BACK'
         source = os.path.abspath('./sourcefolder2/')
         dest = os.path.abspath('./destfolder2/')
-        dest_back = os.path.abspath('./destfolder2'+ back)
+        dest_dir = os.path.abspath('./destfolder2/sourcefolder2')
+        dest_back = os.path.abspath('./destfolder2/sourcefolder2' + back)
 
         if not os.path.isdir(source):
             os.makedirs(source)
@@ -153,6 +153,8 @@ class TestCommands(unittest.TestCase):
             os.makedirs(dest)
         if not os.path.isdir(dest_back):
             os.makedirs(dest_back)
+        if not os.path.isdir(dest_dir):
+            os.makedirs(dest_dir)
 
         open(os.path.join(source, file_name), "w").close()
 
@@ -163,7 +165,6 @@ class TestCommands(unittest.TestCase):
         )
         shutil.rmtree(source)
         shutil.rmtree(dest)
-        shutil.rmtree(dest_back)
 
     def test_move_file_source_does_not_exist(self):
         self.assertRaises(

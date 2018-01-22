@@ -132,31 +132,40 @@ def move_file(source_path, destination_path):
 
         # source is folder
         elif os.path.isdir(source_path):
+            dst_dir = os.path.join(
+                destination_path,
+                os.path.basename(source_path),
+            )
             if os.path.isfile(destination_path):
-                raise NotADirectoryError(errno.ENOTDIR,
-                                         os.strerror(errno.ENOTDIR),
-                                         destination_path)
-            if os.path.isdir(destination_path):
-                os.rename(destination_path,
-                          destination_path + backup_file_ending)
+                raise NotADirectoryError(
+                    errno.ENOTDIR,
+                    os.strerror(errno.ENOTDIR),
+                    destination_path,
+                )
+            if os.path.isdir(dst_dir):
+                os.rename(
+                    dst_dir,
+                    dst_dir + backup_file_ending,
+                )
             for src_dir, _, files in os.walk(source_path):
                 dst_dir = os.path.join(
-                    destination_path, os.path.basename(src_dir))
+                    destination_path,
+                    os.path.basename(src_dir),
+                )
                 # If source folder does not exist in destination create it.
                 if not os.path.exists(dst_dir):
                     os.makedirs(dst_dir)
                 for file_ in files:
                     src_file = os.path.join(src_dir, file_)
                     dst_file = os.path.join(dst_dir, file_)
-                    backup_file_name = dst_file + backup_file_ending
-                    # if file exists rename old one
-                    if os.path.exists(dst_file):
-                        os.rename(dst_file, backup_file_name)
-                    # (rename and) link source to destination
+                    # link source to destination
                     os.link(src_file, dst_file)
         else:
-            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT),
-                                    source_path)
+            raise FileNotFoundError(
+                errno.ENOENT,
+                os.strerror(errno.ENOENT),
+                source_path,
+            )
 
 
 @Rpc.method
