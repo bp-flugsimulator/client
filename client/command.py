@@ -133,9 +133,6 @@ def move_file(source_path, destination_path):
                 dst_dir = src_dir.replace(source_path, destination_path, 1)
                 print(dst_dir)
                 # If source folder does not exist in destination create it.
-                # This will create all missing folders, so if dest path is wrong
-                # it will still create all folders
-                # (may be unwanted and hard to cleanup)
                 if not os.path.exists(dst_dir):
                     os.makedirs(dst_dir)
                 for file_ in files:
@@ -143,13 +140,18 @@ def move_file(source_path, destination_path):
                     dst_file = os.path.join(dst_dir, file_)
                     backup_file_name = dst_file + backup_file_ending
                     # if file exists rename old one
-                    if os.path.exists(
-                            dst_file) and not os.path.exists(backup_file_name):
-                        os.rename(dst_file, backup_file_name)
+                    if os.path.exists(dst_file):
+                        if os.path.exists(backup_file_name):
+                            return ('[FATAL] file: '
+                                    + source_file
+                                    + ' could not be linked, because a backup ('
+                                    + backup_file_name + ') already exists. ')
+                        else:
+                            os.rename(dst_file, backup_file_name)
                     # (rename and) link source to destination
                     os.link(src_file, dst_file)
                     # uhm and i dont know what to return lul
-        return "File " + source_path + "moved to" + destination_path
+        return "[DONE] File " + source_path + " linked to " + destination_path
 
 
 @Rpc.method
