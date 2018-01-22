@@ -6,7 +6,6 @@ import asyncio
 import os
 import platform
 import subprocess
-import psutil
 
 from utils import Rpc
 
@@ -54,8 +53,7 @@ def execute(path, arguments):
 
     if platform.system() == "Windows":
         process = yield from asyncio.create_subprocess_exec(
-            *([path] + arguments),
-            creationflags=subprocess.CREATE_NEW_CONSOLE)
+            *([path] + arguments), creationflags=subprocess.CREATE_NEW_CONSOLE)
     else:
         process = yield from asyncio.create_subprocess_exec(
             *([path] + arguments))
@@ -65,6 +63,7 @@ def execute(path, arguments):
         return code
     except asyncio.CancelledError:
         if platform.system() == "Windows":
+            import psutil
             parent = psutil.Process(process.pid)
             for child in parent.children(recursive=True):
                 child.terminate()
