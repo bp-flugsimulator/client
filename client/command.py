@@ -7,6 +7,7 @@ import os
 import platform
 import subprocess
 import errno
+import shutil
 
 from utils import Rpc
 
@@ -143,13 +144,9 @@ def move_file(source_path, destination_path):
 
         # source is folder
         elif os.path.isdir(source_path):
-            dest_src = os.path.join(
-                os.path.basename(destination_path),
+            dst_dir = os.path.join(
+                destination_path,
                 os.path.basename(source_path),
-            )
-            dst_dir = src_dir.replace(
-                os.path.basename(source_path),
-                dest_src,
             )
             # destination cant be a file if source is folder
             if os.path.isfile(destination_path):
@@ -171,9 +168,13 @@ def move_file(source_path, destination_path):
                     dst_dir + backup_file_ending,
                 )
             for src_dir, _, files in os.walk(source_path):
-                dst_dir = os.path.join(
-                    destination_path,
-                    os.path.basename(src_dir),
+                dest_src = os.path.join(
+                    os.path.basename(destination_path),
+                    os.path.basename(source_path),
+                )
+                dst_dir = src_dir.replace(
+                    os.path.basename(source_path),
+                    dest_src,
                 )
                 # If source folder does not exist in destination create it.
                 if not os.path.exists(dst_dir):
@@ -193,9 +194,25 @@ def move_file(source_path, destination_path):
 
 @Rpc.method
 @asyncio.coroutine
-def restore(destination_path):
+def restore(path):
     """
+    Function
+    --------
+    Restore the BACKUP files created by move_file to their previous state.
 
+    Arguments
+    ---------
+    path: string
+        Path to the File or Directory to be restored.
+
+    Returns
+    -------
+    ValueError: -
+        If path is not a string.
+
+    FileNotFoundError: -
+        Wrong path to file or file does not end with BACKUP ending.
+        Or if the file without ending is not a link or directory.
     """
 
 
