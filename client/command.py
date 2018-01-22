@@ -123,10 +123,12 @@ def move_file(source_path, destination_path):
                 destination_path = os.path.join(destination_path, source_file)
             backup_file_name = destination_path + backup_file_ending
             # destination file with name of source exists
-            if os.path.isfile(destination_path):
+            if os.path.islink(destination_path):
+                os.remove(destination_path)
+            elif os.path.isfile(destination_path):
                 if os.path.exists(backup_file_name):
-                    raise FileExistsError(errno.ENOENT,
-                                          os.strerror(errno.ENOENT),
+                    raise FileExistsError(errno.EEXIST,
+                                          os.strerror(errno.EEXIST),
                                           backup_file_name)
                 else:
                     os.rename(destination_path, backup_file_name)
@@ -135,8 +137,13 @@ def move_file(source_path, destination_path):
 
         # source is folder
         elif os.path.isdir(source_path):
+            if os.path.isfile(destination_path):
+                raise NotADirectoryError(errno.ENOTDIR,
+                                         os.strerror(errno.ENOTDIR),
+                                         destination_path)
             for src_dir, _, files in os.walk(source_path):
-                dst_dir = src_dir.replace(source_path, destination_path, 1)
+                dst_dir = os.path.join(
+                    destination_path, os.path.basename(src_dir))
                 # If source folder does not exist in destination create it.
                 if not os.path.exists(dst_dir):
                     os.makedirs(dst_dir)
@@ -147,8 +154,8 @@ def move_file(source_path, destination_path):
                     # if file exists rename old one
                     if os.path.exists(dst_file):
                         if os.path.exists(backup_file_name):
-                            raise FileExistsError(errno.ENOENT,
-                                                  os.strerror(errno.ENOENT),
+                            raise FileExistsError(errno.EEXIST,
+                                                  os.strerror(errno.EEXIST),
                                                   backup_file_name)
                         else:
                             os.rename(dst_file, backup_file_name)

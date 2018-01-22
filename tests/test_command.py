@@ -68,7 +68,7 @@ class TestCommands(unittest.TestCase):
             self.loop.run_until_complete(client.command.execute(prog, args)),
         )
 
-    def test_move_file(self):
+    def test_move_file_with_file(self):
         file_name = "testfile.txt"
         if os.path.isfile(file_name):
             os.remove(file_name)
@@ -82,6 +82,25 @@ class TestCommands(unittest.TestCase):
         self.assertTrue(os.path.isfile(myfile_name))
         os.remove(file_name)
         os.remove(myfile_name)
+
+    def test_move_file_with_dir(self):
+        file_name = 'file.txt'
+        source = os.path.abspath('./sourcefolder/')
+        if not os.path.isdir(source):
+            os.makedirs(source)
+        dest = os.path.abspath('./destfolder/')
+        if not os.path.isdir(dest):
+            os.makedirs(dest)
+
+        open(os.path.join(source, file_name), "w").close()
+
+        self.loop.run_until_complete(client.command.move_file(source, dest))
+        self.assertTrue(
+            os.path.isfile(
+                os.path.join(dest, os.path.join(source, file_name))))
+
+        shutil.rmtree(source)
+        shutil.rmtree(dest)
 
     def test_move_file_wrong_sourcePath_object(self):
         self.assertRaises(
@@ -122,20 +141,20 @@ class TestCommands(unittest.TestCase):
 
     def test_move_file_backup_exists_error_dir(self):
         file_name = 'file.txt'
-        source = './sourcefolder/'
+        source = os.path.abspath('./sourcefolder2/')
         if not os.path.isdir(source):
             os.makedirs(source)
-        dest = './destfolder/'
+        dest = os.path.abspath('./destfolder2/')
         if not os.path.isdir(dest):
             os.makedirs(dest)
-        #     os.remove(dest)
         back = file_name + '_BACK'
-        # if not os.path.isfile(dest+back):
-        #     os.remove(back)
 
-        open(source + file_name, "w").close()
-        open(dest + file_name, "w").close()
-        open(dest + back, "w").close()
+        dest_dir = os.path.join(dest, 'sourcefolder2')
+        os.makedirs(dest_dir)
+
+        open(os.path.join(source, file_name), "w").close()
+        open(os.path.join(dest_dir, file_name), "w").close()
+        open(os.path.join(dest_dir, back), "w").close()
 
         self.assertRaises(
             FileExistsError,
