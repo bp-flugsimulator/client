@@ -126,6 +126,12 @@ def move_file(source_path, destination_path):
             if os.path.islink(destination_path):
                 os.remove(destination_path)
             elif os.path.isfile(destination_path):
+                if os.path.isfile(backup_file_name):
+                    FileExistsError(
+                        errno.EEXIST,
+                        os.strerror(errno.EEXIST),
+                        backup_file_name,
+                    )
                 os.rename(destination_path, backup_file_name)
             # finally (rename and) link source to destination
             os.link(source_path, destination_path)
@@ -143,6 +149,12 @@ def move_file(source_path, destination_path):
                     destination_path,
                 )
             if os.path.isdir(dst_dir):
+                if os.path.isfile(dst_dir + backup_file_ending):
+                    FileExistsError(
+                        errno.EEXIST,
+                        os.strerror(errno.EEXIST),
+                        backup_file_name,
+                    )
                 os.rename(
                     dst_dir,
                     dst_dir + backup_file_ending,
