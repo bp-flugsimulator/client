@@ -115,15 +115,15 @@ class TestCommands(unittest.TestCase):
             self.loop.run_until_complete,
             client.command.move_file("file.txt", 1),
         )
-
+    """
     def test_move_file_backup_exists_error_file(self):
-        file_name = "file.txt"
+        file_name = os.path.abspath("file.txt")
         if os.path.isfile(file_name):
             os.remove(file_name)
-        myfile_name = "dest.txt"
+        myfile_name = os.path.abspath("dest.txt")
         if os.path.isfile(myfile_name):
             os.remove(myfile_name)
-        back_file_name = "dest.txt_BACK"
+        back_file_name = os.path.abspath("dest.txt_BACK")
         if os.path.isfile(back_file_name):
             os.remove(back_file_name)
 
@@ -165,7 +165,7 @@ class TestCommands(unittest.TestCase):
         )
         shutil.rmtree(source)
         shutil.rmtree(dest)
-
+    """
     def test_move_file_source_does_not_exist(self):
         self.assertRaises(
             FileNotFoundError,
