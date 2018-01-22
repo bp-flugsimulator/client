@@ -127,7 +127,7 @@ def move_file(source_path, destination_path):
                 os.remove(destination_path)
             elif os.path.isfile(destination_path):
                 if os.path.exists(backup_file_name):
-                    FileExistsError(
+                    raise FileExistsError(
                         errno.EEXIST,
                         os.strerror(errno.EEXIST),
                         backup_file_name,
@@ -150,7 +150,7 @@ def move_file(source_path, destination_path):
                 )
             if os.path.isdir(dst_dir):
                 if os.path.exists(dst_dir + backup_file_ending):
-                    FileExistsError(
+                    raise FileExistsError(
                         errno.EEXIST,
                         os.strerror(errno.EEXIST),
                         dst_dir + backup_file_ending,

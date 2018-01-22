@@ -115,29 +115,31 @@ class TestCommands(unittest.TestCase):
             self.loop.run_until_complete,
             client.command.move_file("file.txt", 1),
         )
-    """
-    def test_move_file_backup_exists_error_file(self):
-        file_name = os.path.abspath("file.txt")
-        if os.path.isfile(file_name):
-            os.remove(file_name)
-        myfile_name = os.path.abspath("dest.txt")
-        if os.path.isfile(myfile_name):
-            os.remove(myfile_name)
-        back_file_name = os.path.abspath("dest.txt_BACK")
-        if os.path.isfile(back_file_name):
-            os.remove(back_file_name)
 
-        open(file_name, "w").close()
-        open(myfile_name, "w").close()
-        open(back_file_name, "w").close()
+    def test_move_file_backup_exists_error_file(self):
+        source = os.path.abspath("./src.txt")
+        dest = os.path.abspath("./dest.txt")
+        back = os.path.abspath("./dest.txt_BACK")
+
+        if os.path.isfile(dest):
+            os.remove(dest)
+        if os.path.isfile(source):
+            os.remove(source)
+        if os.path.isfile(back):
+            os.remove(back)
+
+        open(source, "w").close()
+        open(dest, "w").close()
+        open(back, "w").close()
+
         self.assertRaises(
             FileExistsError,
             self.loop.run_until_complete,
-            client.command.move_file(file_name, myfile_name),
+            client.command.move_file(source, dest),
         )
-        os.remove(file_name)
-        os.remove(myfile_name)
-        os.remove(back_file_name)
+        os.remove(source)
+        os.remove(dest)
+        os.remove(back)
 
     def test_move_file_backup_exists_error_dir(self):
         file_name = 'file.txt'
@@ -165,7 +167,7 @@ class TestCommands(unittest.TestCase):
         )
         shutil.rmtree(source)
         shutil.rmtree(dest)
-    """
+
     def test_move_file_source_does_not_exist(self):
         self.assertRaises(
             FileNotFoundError,
