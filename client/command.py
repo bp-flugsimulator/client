@@ -141,6 +141,9 @@ def move_file(source_path, destination_path):
                 raise NotADirectoryError(errno.ENOTDIR,
                                          os.strerror(errno.ENOTDIR),
                                          destination_path)
+            if os.path.isdir(destination_path):
+                os.rename(destination_path,
+                          destination_path + backup_file_ending)
             for src_dir, _, files in os.walk(source_path):
                 dst_dir = os.path.join(
                     destination_path, os.path.basename(src_dir))
