@@ -192,27 +192,6 @@ class TestCommands(unittest.TestCase):
         shutil.rmtree(source)
         shutil.rmtree(dest)
 
-    """
-    def test_move_file_no_file_exists(self):
-        self.assertRaises(FileNotFoundError, self.loop.run_until_complete,
-                          client.command.move_file("file.txt",
-                                                   "file_link.test"))
-
-    def test_move_file_already_exists(self):
-        file_name = "testfile2.txt"
-        if os.path.isfile(file_name):
-            os.remove(file_name)
-        open(file_name, "w").close()
-        myfile_name = "testfile2_link.txt"
-        if os.path.isfile(myfile_name):
-            os.remove(myfile_name)
-        open(myfile_name, "w").close()
-        self.assertRaises(FileExistsError, self.loop.run_until_complete,
-                          client.command.move_file(file_name, myfile_name))
-        os.remove(file_name)
-        os.remove(myfile_name)
-    """
-
     def test_online(self):
         result = self.loop.run_until_complete(client.command.online())
         self.assertIsNone(result)
