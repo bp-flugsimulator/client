@@ -101,6 +101,7 @@ class TestCommands(unittest.TestCase):
 
         shutil.rmtree(source)
         shutil.rmtree(dest)
+        shutil.rmtree(dest + '_BACK')
 
     def test_move_file_wrong_sourcePath_object(self):
         self.assertRaises(
@@ -141,20 +142,19 @@ class TestCommands(unittest.TestCase):
 
     def test_move_file_backup_exists_error_dir(self):
         file_name = 'file.txt'
+        back = '_BACK'
         source = os.path.abspath('./sourcefolder2/')
+        dest = os.path.abspath('./destfolder2/')
+        dest_back = os.path.abspath('./destfolder2'+ back)
+
         if not os.path.isdir(source):
             os.makedirs(source)
-        dest = os.path.abspath('./destfolder2/')
         if not os.path.isdir(dest):
             os.makedirs(dest)
-        back = file_name + '_BACK'
-
-        dest_dir = os.path.join(dest, 'sourcefolder2')
-        os.makedirs(dest_dir)
+        if not os.path.isdir(dest_back):
+            os.makedirs(dest_back)
 
         open(os.path.join(source, file_name), "w").close()
-        open(os.path.join(dest_dir, file_name), "w").close()
-        open(os.path.join(dest_dir, back), "w").close()
 
         self.assertRaises(
             FileExistsError,
@@ -163,6 +163,7 @@ class TestCommands(unittest.TestCase):
         )
         shutil.rmtree(source)
         shutil.rmtree(dest)
+        shutil.rmtree(dest_back)
 
     def test_move_file_source_does_not_exist(self):
         self.assertRaises(
