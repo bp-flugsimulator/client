@@ -6,6 +6,7 @@ import asyncio
 import os
 import platform
 import subprocess
+import errno
 
 from utils import Rpc
 
@@ -123,7 +124,10 @@ def move_file(source_path, destination_path):
             backup_file_name = destination_path + backup_file_ending
             # destination file with name of source exists
             if os.path.isfile(destination_path):
-                os.rename(destination_path, backup_file_name)
+                if os.path.exists(backup_file_name):
+                    raise FileExistsError
+                else:
+                    os.rename(destination_path, backup_file_name)
             # finally (rename and) link source to destination
             os.link(source_path, destination_path)
 
@@ -142,16 +146,14 @@ def move_file(source_path, destination_path):
                     # if file exists rename old one
                     if os.path.exists(dst_file):
                         if os.path.exists(backup_file_name):
-                            return ('[FATAL] file: '
-                                    + source_file
-                                    + ' could not be linked, because a backup ('
-                                    + backup_file_name + ') already exists. ')
+                            raise FileExistsError
                         else:
                             os.rename(dst_file, backup_file_name)
                     # (rename and) link source to destination
                     os.link(src_file, dst_file)
-                    # uhm and i dont know what to return lul
-        return "[DONE] File " + source_path + " linked to " + destination_path
+        else:
+            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT),
+                                    source_path)
 
 
 @Rpc.method
