@@ -216,4 +216,4 @@ class TestCommands(unittest.TestCase):
             return result
         
         res = self.loop.run_until_complete(create_and_cancel_task())
-        self.assertTrue('Process got canceled and returned' in res))
+        self.assertTrue('Process got canceled and returned' in res)
