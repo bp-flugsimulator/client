@@ -6,12 +6,12 @@ pipeline {
     
   }
   stages {
-    stage('Test') {
+    stage('Depndency Install') {
       steps {
         bat 'python install.py --upgrade'
       }
     }
-    stage('') {
+    stage('Testing') {
       steps {
         bat 'python setup.py test'
       }
