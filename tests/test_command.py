@@ -202,7 +202,7 @@ class TestCommands(unittest.TestCase):
     def test_cancel_execution(self):
         if os.name == 'nt':
             prog = "C:\\Windows\\System32\\cmd.exe"
-            args = ["/c", "SLEEP 10"]
+            args = ["/c", "PING 127.0.0.1>nul"]
         else:
             prog = "/bin/sh"
             args = ["-c", "sleep 10"]
