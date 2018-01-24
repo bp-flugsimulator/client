@@ -8,7 +8,6 @@ pipeline {
   stages {
     stage('Test') {
       steps {
-        sh 'python setup.py test'
         bat 'python manage.py test'
       }
     }
