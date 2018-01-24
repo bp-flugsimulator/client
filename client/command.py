@@ -64,11 +64,11 @@ def execute(path, arguments):
         code = yield from process.wait()
         return code
     except asyncio.CancelledError:
-        if platform.system() == "Windows":
-            import psutil
-            parent = psutil.Process(process.pid)
-            for child in parent.children(recursive=True):
-                child.terminate()
+       # if platform.system() == "Windows":
+       #     import psutil
+       #     parent = psutil.Process(process.pid)
+       #     for child in parent.children(recursive=True):
+       #         child.terminate()
 
         process.terminate()
         yield from process.wait()
