@@ -202,7 +202,7 @@ class TestCommands(unittest.TestCase):
     def test_cancel_execution(self):
         if os.name == 'nt':
             prog = "C:\\Windows\\System32\\cmd.exe"
-            args = ["/c", "TIMEOUT 10>nul"]
+            args = ["/c", "SLEEP 10"]
         else:
             prog = "/bin/sh"
             args = ["-c", "sleep 10"]
@@ -216,7 +216,6 @@ class TestCommands(unittest.TestCase):
             return result
         
         res = self.loop.run_until_complete(create_and_cancel_task())
-        print()
         print()
         print()
         print()
