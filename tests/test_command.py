@@ -197,7 +197,7 @@ class TestCommands(unittest.TestCase):
     def test_cancel_execution(self):
         if os.name == 'nt':
             prog = "C:\\Windows\\System32\\cmd.exe"
-            args = ["/c", "TIMEOUT 10>nul"]
+            args = ["/c", "PING 127.0.0.1>nul"]
         else:
             prog = "/bin/sh"
             args = ["-c", "sleep 10"]
@@ -209,6 +209,6 @@ class TestCommands(unittest.TestCase):
             task.cancel()
             result = yield from task
             return result
-
-        self.assertTrue('Process got canceled and returned' in
-                        self.loop.run_until_complete(create_and_cancel_task()))
+        
+        res = self.loop.run_until_complete(create_and_cancel_task())
+        self.assertTrue('Process got canceled and returned' in res)
