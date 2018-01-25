@@ -7,6 +7,7 @@ import os
 import platform
 import subprocess
 import errno
+import hashlib
 
 from utils import Rpc
 
@@ -86,9 +87,9 @@ def move_file(source_path, destination_path):
 
     Arguments
     ---------
-    sourcePath: string
+    source_path: string
         Represents a valid path to an existing file.
-    destinationPath: string
+    destination_path: string
         Represents a valid path to the desired destination.
         The file will be renamed and linked to that destination
 
@@ -141,48 +142,48 @@ def move_file(source_path, destination_path):
             # finally (rename and) link source to destination
             os.link(source_path, destination_path)
 
-        # source is folder
-        elif os.path.isdir(source_path):
-            dst_dir = os.path.join(
-                destination_path,
-                os.path.basename(source_path),
-            )
-            # destination cant be a file if source is folder
-            if os.path.isfile(destination_path):
-                raise NotADirectoryError(
-                    errno.ENOTDIR,
-                    os.strerror(errno.ENOTDIR),
-                    destination_path,
-                )
-            if os.path.isdir(dst_dir):
-                # Backup file name already exits
-                if os.path.exists(dst_dir + backup_file_ending):
-                    raise FileExistsError(
-                        errno.EEXIST,
-                        os.strerror(errno.EEXIST),
-                        dst_dir + backup_file_ending,
-                    )
-                os.rename(
-                    dst_dir,
-                    dst_dir + backup_file_ending,
-                )
-            for src_dir, _, files in os.walk(source_path):
-                dest_src = os.path.join(
-                    os.path.basename(destination_path),
-                    os.path.basename(source_path),
-                )
-                dst_dir = src_dir.replace(
-                    os.path.basename(source_path),
-                    dest_src,
-                )
-                # If source folder does not exist in destination create it.
-                if not os.path.exists(dst_dir):
-                    os.makedirs(dst_dir)
-                for file_ in files:
-                    src_file = os.path.join(src_dir, file_)
-                    dst_file = os.path.join(dst_dir, file_)
-                    # link source to destination
-                    os.link(src_file, dst_file)
+        # # source is folder (NOT POSSIBLE ANYMORE)
+        # elif os.path.isdir(source_path):
+        #     dst_dir = os.path.join(
+        #         destination_path,
+        #         os.path.basename(source_path),
+        #     )
+        #     # destination cant be a file if source is folder
+        #     if os.path.isfile(destination_path):
+        #         raise NotADirectoryError(
+        #             errno.ENOTDIR,
+        #             os.strerror(errno.ENOTDIR),
+        #             destination_path,
+        #         )
+        #     if os.path.isdir(dst_dir):
+        #         # Backup file name already exits
+        #         if os.path.exists(dst_dir + backup_file_ending):
+        #             raise FileExistsError(
+        #                 errno.EEXIST,
+        #                 os.strerror(errno.EEXIST),
+        #                 dst_dir + backup_file_ending,
+        #             )
+        #         os.rename(
+        #             dst_dir,
+        #             dst_dir + backup_file_ending,
+        #         )
+        #     for src_dir, _, files in os.walk(source_path):
+        #         dest_src = os.path.join(
+        #             os.path.basename(destination_path),
+        #             os.path.basename(source_path),
+        #         )
+        #         dst_dir = src_dir.replace(
+        #             os.path.basename(source_path),
+        #             dest_src,
+        #         )
+        #         # If source folder does not exist in destination create it.
+        #         if not os.path.exists(dst_dir):
+        #             os.makedirs(dst_dir)
+        #         for file_ in files:
+        #             src_file = os.path.join(src_dir, file_)
+        #             dst_file = os.path.join(dst_dir, file_)
+        #             # link source to destination
+        #             os.link(src_file, dst_file)
         else:
             raise FileNotFoundError(
                 errno.ENOENT,
