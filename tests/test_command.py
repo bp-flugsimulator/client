@@ -2,6 +2,7 @@ import unittest
 import asyncio
 import os
 import shutil
+import hashlib
 
 from utils import Rpc
 import client.command
@@ -70,46 +71,44 @@ class TestCommands(unittest.TestCase):
 
     def test_move_file_with_file(self):
         file_name = "testfile.txt"
-        if os.path.isfile(file_name):
-            os.remove(file_name)
         myfile_name = "testfile_link.txt"
-        if os.path.isfile(myfile_name):
-            os.remove(myfile_name)
 
         open(file_name, "w").close()
-        self.loop.run_until_complete(
-            client.command.move_file(file_name, myfile_name))
-        self.assertTrue(os.path.isfile(myfile_name))
-        os.remove(file_name)
-        os.remove(myfile_name)
+        try:
+            self.loop.run_until_complete(
+                client.command.move_file(file_name, myfile_name))
+            self.assertTrue(os.path.isfile(myfile_name)) # test if file was moved
+        finally:
+            os.remove(file_name)
+            os.remove(myfile_name)
 
-    def test_move_file_with_dir(self):
-        file_name = 'file.txt'
-        source = os.path.abspath('./sourcefolder/')
-        if not os.path.isdir(source):
-            os.makedirs(source)
-        dest = os.path.abspath('./destfolder/')
-        if not os.path.isdir(dest):
-            os.makedirs(dest)
+    # def test_move_file_with_dir(self):
+    #     file_name = 'file.txt'
+    #     source = os.path.abspath('./sourcefolder/')
+    #     if not os.path.isdir(source):
+    #         os.makedirs(source)
+    #     dest = os.path.abspath('./destfolder/')
+    #     if not os.path.isdir(dest):
+    #         os.makedirs(dest)
 
-        open(os.path.join(source, file_name), "w").close()
+    #     open(os.path.join(source, file_name), "w").close()
 
-        self.loop.run_until_complete(client.command.move_file(source, dest))
-        self.assertTrue(
-            os.path.isfile(
-                os.path.join(dest, os.path.join(source, file_name))))
+    #     self.loop.run_until_complete(client.command.move_file(source, dest))
+    #     self.assertTrue(
+    #         os.path.isfile(
+    #             os.path.join(dest, os.path.join(source, file_name))))
 
-        shutil.rmtree(source)
-        shutil.rmtree(dest)
+    #     shutil.rmtree(source)
+    #     shutil.rmtree(dest)
 
-    def test_move_file_wrong_sourcePath_object(self):
+    def test_move_file_wrong_source_path_object(self):
         self.assertRaises(
             ValueError,
             self.loop.run_until_complete,
             client.command.move_file(1, "file.txt"),
         )
 
-    def test_move_file_wrong_destinationPath_object(self):
+    def test_move_file_wrong_destination_path_object(self):
         self.assertRaises(
             ValueError,
             self.loop.run_until_complete,
@@ -121,52 +120,20 @@ class TestCommands(unittest.TestCase):
         dest = os.path.abspath("./dest.txt")
         back = os.path.abspath("./dest.txt_BACK")
 
-        if os.path.isfile(dest):
-            os.remove(dest)
-        if os.path.isfile(source):
+        try:
+            open(source, "w").close()
+            open(dest, "w").close()
+            open(back, "w").close()
+
+            self.assertRaises(
+                FileExistsError,
+                self.loop.run_until_complete,
+                client.command.move_file(source, dest),
+            )
+        finally:
             os.remove(source)
-        if os.path.isfile(back):
+            os.remove(dest)
             os.remove(back)
-
-        open(source, "w").close()
-        open(dest, "w").close()
-        open(back, "w").close()
-
-        self.assertRaises(
-            FileExistsError,
-            self.loop.run_until_complete,
-            client.command.move_file(source, dest),
-        )
-        os.remove(source)
-        os.remove(dest)
-        os.remove(back)
-
-    def test_move_file_backup_exists_error_dir(self):
-        file_name = 'file.txt'
-        back = '_BACK'
-        source = os.path.abspath('./sourcefolder2/')
-        dest = os.path.abspath('./destfolder2/')
-        dest_dir = os.path.abspath('./destfolder2/sourcefolder2')
-        dest_back = os.path.abspath('./destfolder2/sourcefolder2' + back)
-
-        if not os.path.isdir(source):
-            os.makedirs(source)
-        if not os.path.isdir(dest):
-            os.makedirs(dest)
-        if not os.path.isdir(dest_back):
-            os.makedirs(dest_back)
-        if not os.path.isdir(dest_dir):
-            os.makedirs(dest_dir)
-
-        open(os.path.join(source, file_name), "w").close()
-
-        self.assertRaises(
-            FileExistsError,
-            self.loop.run_until_complete,
-            client.command.move_file(source, dest),
-        )
-        shutil.rmtree(source)
-        shutil.rmtree(dest)
 
     def test_move_file_source_does_not_exist(self):
         self.assertRaises(
@@ -175,25 +142,53 @@ class TestCommands(unittest.TestCase):
             client.command.move_file("source.txt", "dest.txt"),
         )
 
-    def test_move_file_destination_not_directory(self):
-        file_name = 'file.txt'
-        source = os.path.abspath('./sourcefolder3/')
-        if not os.path.isdir(source):
-            os.makedirs(source)
-        dest = os.path.abspath('./destfolder3/')
-        if not os.path.isdir(dest):
-            os.makedirs(dest)
+    # def test_move_file_backup_exists_error_dir(self):
 
-        open(os.path.join(source, file_name), "w").close()
-        open(os.path.join(dest, file_name), 'w').close()
+    #     file_name = 'file.txt'
+    #     back = '_BACK'
+    #     source = os.path.abspath('./sourcefolder2/')
+    #     dest = os.path.abspath('./destfolder2/')
+    #     dest_dir = os.path.abspath('./destfolder2/sourcefolder2')
+    #     dest_back = os.path.abspath('./destfolder2/sourcefolder2' + back)
 
-        self.assertRaises(
-            NotADirectoryError,
-            self.loop.run_until_complete,
-            client.command.move_file(source, os.path.join(dest, file_name)),
-        )
-        shutil.rmtree(source)
-        shutil.rmtree(dest)
+    #     if not os.path.isdir(source):
+    #         os.makedirs(source)
+    #     if not os.path.isdir(dest):
+    #         os.makedirs(dest)
+    #     if not os.path.isdir(dest_back):
+    #         os.makedirs(dest_back)
+    #     if not os.path.isdir(dest_dir):
+    #         os.makedirs(dest_dir)
+
+    #     open(os.path.join(source, file_name), "w").close()
+
+    #     self.assertRaises(
+    #         FileExistsError,
+    #         self.loop.run_until_complete,
+    #         client.command.move_file(source, dest),
+    #     )
+    #     shutil.rmtree(source)
+    #     shutil.rmtree(dest)
+
+    # def test_move_file_destination_not_directory(self):
+    #     file_name = 'file.txt'
+    #     source = os.path.abspath('./sourcefolder3/')
+    #     if not os.path.isdir(source):
+    #         os.makedirs(source)
+    #     dest = os.path.abspath('./destfolder3/')
+    #     if not os.path.isdir(dest):
+    #         os.makedirs(dest)
+
+    #     open(os.path.join(source, file_name), "w").close()
+    #     open(os.path.join(dest, file_name), 'w').close()
+
+    #     self.assertRaises(
+    #         NotADirectoryError,
+    #         self.loop.run_until_complete,
+    #         client.command.move_file(source, os.path.join(dest, file_name)),
+    #     )
+    #     shutil.rmtree(source)
+    #     shutil.rmtree(dest)
 
     def test_online(self):
         result = self.loop.run_until_complete(client.command.online())
