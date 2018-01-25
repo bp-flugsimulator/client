@@ -8,6 +8,7 @@ Example
 -------
     $python install.py --update
     $python install.py --upgrade
+    $python install.py --update_client 127.0.0.1:4242
 """
 
 from platform import system, architecture
