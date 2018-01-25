@@ -13,8 +13,13 @@ Example
 from platform import system, architecture
 from os import listdir, getcwd, remove
 from os.path import join
-from argparse import ArgumentParser
 from sys import stderr
+
+from argparse import ArgumentParser
+
+from urllib.request import urlretrieve
+
+from shutil import unpack_archive
 
 import pip
 
@@ -125,10 +130,14 @@ if __name__ == "__main__":
         help='downloads all packages from requirements.txt to ./libs',
         action='store_const',
         const=True)
+    PARSER.add_argument(
+        '--update_client',
+        help='updates the client from the given server',
+        type=str)
 
     ARGS = PARSER.parse_args()
 
-    if not (ARGS.update or ARGS.upgrade):
+    if not (ARGS.update or ARGS.upgrade or ARGS.update_client):
         PARSER.print_help()
 
     # select requirements file
@@ -142,6 +151,14 @@ if __name__ == "__main__":
                          ' is not officially supported but may work\n')
     else:
         stderr.write(system() + ' is not officially supported but may work\n')
+
+    if ARGS.update_client:
+        (file_name, _) = urlretrieve(
+            'http://' + str(ARGS.update_client) +
+            '/static/downloads/client.zip',
+            filename="client.zip")
+        unpack_archive(file_name)
+        remove(file_name)
 
     if ARGS.update:
         with open(REQUIREMENTS_FILE) as requirements:
