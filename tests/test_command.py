@@ -216,18 +216,4 @@ class TestCommands(unittest.TestCase):
             return result
         
         res = self.loop.run_until_complete(create_and_cancel_task())
-        print()
-        print()
-        print()
-        print()
-        print()
-        print(res)
-        print()
-        print()
-        print()
-        print()
-        print()
-        print()
-        print()
-        print()
         self.assertTrue('Process got canceled and returned' in res)
