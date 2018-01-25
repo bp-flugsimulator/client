@@ -153,9 +153,12 @@ if __name__ == "__main__":
         stderr.write(system() + ' is not officially supported but may work\n')
 
     if ARGS.update_client:
-        (file_name, _) = urlretrieve('http://' + str(ARGS.update_client) +
-                                     '/static/downloads/client.zip')
+        (file_name, _) = urlretrieve(
+            'http://' + str(ARGS.update_client) +
+            '/static/downloads/client.zip',
+            filename="client.zip")
         unpack_archive(file_name)
+        remove(file_name)
 
     if ARGS.update:
         with open(REQUIREMENTS_FILE) as requirements:
