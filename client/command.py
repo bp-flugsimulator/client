@@ -78,7 +78,7 @@ def execute(path, arguments):
 
 @Rpc.method
 @asyncio.coroutine
-def move_file(source_path, destination_path):
+def move_file(source_path, destination_path, backup_ending):
     """
     Function
     --------
@@ -114,11 +114,13 @@ def move_file(source_path, destination_path):
         raise ValueError("source Path is not a string!")
     if not isinstance(destination_path, str):
         raise ValueError("destination Path is not a string!")
+    if not isinstance(backup_ending, str):
+        raise ValueError("Backup file ending is not a string!")
     else:
         source_path = os.path.abspath(source_path)
         destination_path = os.path.abspath(destination_path)
         # File ending of backup files
-        backup_file_ending = "_BACK"
+        backup_file_ending = backup_ending
 
         # source is file
         if os.path.isfile(source_path):
@@ -140,7 +142,17 @@ def move_file(source_path, destination_path):
                     )
                 os.rename(destination_path, backup_file_name)
             # finally (rename and) link source to destination
+            md5 = hashlib.md5()
+            BUF_SIZE = 65536
+
             os.link(source_path, destination_path)
+            with open(destination_path, 'rb') as file_:
+                while True:
+                    data = file_.read(BUF_SIZE)
+                    if not data:
+                        break
+                    md5.update(data)
+            return "{0}".format(md5.hexdigest())
 
         # # source is folder (NOT POSSIBLE ANYMORE)
         # elif os.path.isdir(source_path):
@@ -194,7 +206,7 @@ def move_file(source_path, destination_path):
 
 @Rpc.method
 @asyncio.coroutine
-def restore(path):
+def restore_file(source_path, destination_path, backup_ending, hash_value):
     """
     Function
     --------
@@ -214,6 +226,53 @@ def restore(path):
         Wrong path to file or file does not end with BACKUP ending.
         Or if the file without ending is not a link or directory.
     """
+    if not isinstance(source_path, str):
+        raise ValueError("source Path is not a string!")
+    if not isinstance(destination_path, str):
+        raise ValueError("destination Path is not a string!")
+    if not isinstance(backup_ending, str):
+        raise ValueError("Backup file ending is not a string!")
+    if not isinstance(hash_value, str):
+        raise ValueError("Hash Value is not a string!")
+    else:
+        source_path = os.path.abspath(source_path)
+        destination_path = os.path.abspath(destination_path)
+
+        link_path = os.path.join(
+            os.path.dirname(destination_path),
+            os.path.basename(source_path),
+        )
+        backup_path = destination_path + backup_ending
+
+        print(backup_path)
+
+        md5 = hashlib.md5()
+        BUF_SIZE = 65536
+
+        with open(destination_path, 'rb') as file_:
+            while True:
+                data = file_.read(BUF_SIZE)
+                if not data:
+                    break
+                md5.update(data)
+        hash_gen = "{0}".format(md5.hexdigest())
+
+        if hash_value == hash_gen:
+            if os.path.exists(backup_path):
+                os.remove(destination_path)
+                os.rename(backup_path, destination_path)
+            else:
+                raise FileNotFoundError(
+                    errno.ENOENT,
+                    os.strerror(errno.ENOENT),
+                    backup_path,
+                )
+        else:
+            raise FileNotFoundError(
+                errno.ENOENT,
+                os.strerror(errno.ENOENT),
+                destination_path,
+            )
 
 
 @Rpc.method
