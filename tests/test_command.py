@@ -76,7 +76,7 @@ class TestCommands(unittest.TestCase):
         open(file_name, "w").close()
         try:
             self.loop.run_until_complete(
-                client.command.move_file(file_name, myfile_name))
+                client.command.move_file(file_name, myfile_name, "_BACK"))
             self.assertTrue(os.path.isfile(myfile_name)) # test if file was moved
         finally:
             os.remove(file_name)
@@ -105,14 +105,21 @@ class TestCommands(unittest.TestCase):
         self.assertRaises(
             ValueError,
             self.loop.run_until_complete,
-            client.command.move_file(1, "file.txt"),
+            client.command.move_file(1, "file.txt", "ende"),
         )
 
     def test_move_file_wrong_destination_path_object(self):
         self.assertRaises(
             ValueError,
             self.loop.run_until_complete,
-            client.command.move_file("file.txt", 1),
+            client.command.move_file("file.txt", 1, "ende"),
+        )
+
+    def test_move_file_wrong_destination_path_object(self):
+        self.assertRaises(
+            ValueError,
+            self.loop.run_until_complete,
+            client.command.move_file("file.txt", "ende", 1),
         )
 
     def test_move_file_backup_exists_error_file(self):
@@ -128,7 +135,7 @@ class TestCommands(unittest.TestCase):
             self.assertRaises(
                 FileExistsError,
                 self.loop.run_until_complete,
-                client.command.move_file(source, dest),
+                client.command.move_file(source, dest, "_BACK"),
             )
         finally:
             os.remove(source)
@@ -139,7 +146,7 @@ class TestCommands(unittest.TestCase):
         self.assertRaises(
             FileNotFoundError,
             self.loop.run_until_complete,
-            client.command.move_file("source.txt", "dest.txt"),
+            client.command.move_file("source.txt", "dest.txt", "_BACK"),
         )
 
     # def test_move_file_backup_exists_error_dir(self):
@@ -209,6 +216,6 @@ class TestCommands(unittest.TestCase):
             task.cancel()
             result = yield from task
             return result
-        
+
         res = self.loop.run_until_complete(create_and_cancel_task())
         self.assertTrue('Process got canceled and returned' in res)
