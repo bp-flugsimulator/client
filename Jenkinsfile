@@ -8,7 +8,6 @@ pipeline {
   stages {
     stage('Depndency Install') {
       steps {
-        bat 'python -m pip uninstall -r win_requirements.txt -y'
         bat 'python install.py --upgrade'
       }
     }
