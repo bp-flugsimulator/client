@@ -19,6 +19,11 @@ class TestCommands(unittest.TestCase):
         else:
             cls.loop = asyncio.get_event_loop()
 
+    @classmethod
+    def tearDownClass(cls):
+        cls.loop.close()
+
+
     def test_all_functions_in_rpc(self):
         """
         Tests if all functions in commands are set with Rpc flag.
