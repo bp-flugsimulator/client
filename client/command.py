@@ -59,12 +59,12 @@ def execute(path, arguments):
         process = yield from asyncio.create_subprocess_exec(
             *([path] + arguments),
             creationflags=subprocess.CREATE_NEW_CONSOLE,
-            cwd=PurePath(path).parent,
+            cwd=str(PurePath(path).parent),
         )
     else:
         process = yield from asyncio.create_subprocess_exec(
             *([path] + arguments),
-            cwd=PurePath(path).parent,
+            cwd=str(PurePath(path).parent),
         )
 
     try:
