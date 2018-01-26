@@ -4,6 +4,9 @@ import os
 import shutil
 import hashlib
 
+from os import remove, getcwd
+from os.path import join, isfile
+
 from utils import Rpc
 import client.command
 
@@ -224,3 +227,16 @@ class TestCommands(unittest.TestCase):
 
         res = self.loop.run_until_complete(create_and_cancel_task())
         self.assertTrue('Process got canceled and returned' in res)
+
+    def test_execution_directory(self):
+        path = join(getcwd(), 'applications')
+        if os.name == 'nt':
+            prog =  join(path, 'echo.bat')
+        else:
+            prog =  join(path, 'echo.sh')
+        
+        self.assertEqual(0, self.loop.run_until_complete(client.command.execute(prog, [])))
+        self.assertTrue(isfile(join(path, 'test.txt')))
+        remove(join(path, 'test.txt'))
+
+

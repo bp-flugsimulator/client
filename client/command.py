@@ -9,6 +9,8 @@ import subprocess
 import errno
 import hashlib
 
+from pathlib import PurePath
+
 from utils import Rpc
 
 
@@ -55,10 +57,15 @@ def execute(path, arguments):
 
     if platform.system() == "Windows":
         process = yield from asyncio.create_subprocess_exec(
-            *([path] + arguments), creationflags=subprocess.CREATE_NEW_CONSOLE)
+            *([path] + arguments),
+            creationflags=subprocess.CREATE_NEW_CONSOLE,
+            cwd=PurePath(path).parent,
+        )
     else:
         process = yield from asyncio.create_subprocess_exec(
-            *([path] + arguments))
+            *([path] + arguments),
+            cwd=PurePath(path).parent,
+        )
 
     try:
         code = yield from process.wait()
