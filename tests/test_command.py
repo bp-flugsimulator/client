@@ -1,8 +1,6 @@
 import unittest
 import asyncio
 import os
-import shutil
-import hashlib
 
 from os import remove, getcwd
 from os.path import join, isfile
@@ -123,13 +121,6 @@ class TestCommands(unittest.TestCase):
             client.command.move_file("file.txt", 1, "ende"),
         )
 
-    def test_move_file_wrong_destination_path_object(self):
-        self.assertRaises(
-            ValueError,
-            self.loop.run_until_complete,
-            client.command.move_file("file.txt", "ende", 1),
-        )
-
     def test_move_file_backup_exists_error_file(self):
         source = os.path.abspath("./src.txt")
         dest = os.path.abspath("./dest.txt")
@@ -231,12 +222,10 @@ class TestCommands(unittest.TestCase):
     def test_execution_directory(self):
         path = join(getcwd(), 'applications')
         if os.name == 'nt':
-            prog =  join(path, 'echo.bat')
+            prog = join(path, 'echo.bat')
         else:
-            prog =  join(path, 'echo.sh')
-        
+            prog = join(path, 'echo.sh')
+
         self.assertEqual(0, self.loop.run_until_complete(client.command.execute(prog, [])))
         self.assertTrue(isfile(join(path, 'test.txt')))
         remove(join(path, 'test.txt'))
-
-
