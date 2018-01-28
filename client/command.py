@@ -56,9 +56,7 @@ def execute(path, arguments):
                 raise ValueError("Element in arguments is not a string.")
 
     process = yield from asyncio.create_subprocess_exec(
-        *([path] + arguments),
-        cwd=str(PurePath(path).parent),
-    )
+        *([path] + arguments), cwd=str(PurePath(path).parent))
 
     try:
         code = yield from process.wait()
