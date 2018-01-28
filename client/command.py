@@ -55,14 +55,10 @@ def execute(path, arguments):
             if not isinstance(arg, str):
                 raise ValueError("Element in arguments is not a string.")
 
-    if platform.system() == "Windows":
-        process = yield from asyncio.create_subprocess_exec(
-            *([path] + arguments),
-            creationflags=subprocess.CREATE_NEW_CONSOLE,
-            cwd=str(PurePath(path).parent))
-    else:
-        process = yield from asyncio.create_subprocess_exec(
-            *([path] + arguments), cwd=str(PurePath(path).parent))
+    process = yield from asyncio.create_subprocess_exec(
+        *([path] + arguments),
+        cwd=str(PurePath(path).parent),
+    )
 
     try:
         code = yield from process.wait()
