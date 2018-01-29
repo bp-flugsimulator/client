@@ -34,9 +34,9 @@ class TestCommands(TestCase):
 
     def test_multiple_preexisting_logfolders(self):
         dir_1 = datetime.now().strftime(ClientLogger.DATE_FORMAT)
-        sleep(0.01)
+        sleep(0.1)
         dir_2 = datetime.now().strftime(ClientLogger.DATE_FORMAT)
-        sleep(0.01)
+        sleep(0.1)
         dir_3 = datetime.now().strftime(ClientLogger.DATE_FORMAT)
 
         mkdir(join(self.FOLDER, dir_1))
@@ -55,7 +55,7 @@ class TestCommands(TestCase):
     def test_unknown_preexisting_logfolders(self):
         dir_unknown = 'unknown'
         dir_1 = datetime.now().strftime(ClientLogger.DATE_FORMAT)
-        sleep(0.01)
+        sleep(0.1)
         dir_2 = datetime.now().strftime(ClientLogger.DATE_FORMAT)
 
         mkdir(join(self.FOLDER, dir_1))
