@@ -98,6 +98,28 @@ def execute(uuid, path, arguments):
     return process.returncode
 
 
+@Rpc.method_with_uuid
+@asyncio.coroutine
+def get_log(uuid):
+    file_name = None
+    for entry in os.listdir(LOGGER.logdir):
+        if uuid in entry:
+            file_name = entry
+            break
+
+    if file_name is None:
+        raise FileNotFoundError('log does not exist')
+
+    message = b''
+    with open(
+            file=os.path.join(LOGGER.logdir, file_name),
+            mode='rb') as log_file:
+        for line in log_file.readlines():
+            message += line
+
+    return message
+
+
 @Rpc.method
 @asyncio.coroutine
 def move_file(source_path, destination_path, backup_ending):

@@ -243,3 +243,29 @@ class TestCommands(unittest.TestCase):
                              client.command.execute(uuid4().hex, prog, [])))
         self.assertTrue(isfile(join(path, 'test.txt')))
         remove(join(path, 'test.txt'))
+
+    def test_get_log(self):
+        path = join(getcwd(), 'applications')
+        if os.name == 'nt':
+            prog = join(path, 'echo.bat')
+        else:
+            prog = join(path, 'echo.sh')
+
+        uuid = uuid4().hex
+        self.assertEqual(0,
+                         self.loop.run_until_complete(
+                             client.command.execute(uuid, prog, [])))
+
+        res = self.loop.run_until_complete(client.command.get_log(uuid))
+        if os.name == 'nt':
+            self.assertIn(
+                b'echo 1234  1>test.txt \r\nFinished with code 0.\r\n', res)
+        else:
+            self.assertIn(b'echo 1234  1>test.txt \nFinished with code 0.\n',
+                          res)
+
+        remove(join(path, 'test.txt'))
+
+    def test_get_log_unknown_uuid(self):
+        self.assertRaises(FileNotFoundError, self.loop.run_until_complete,
+                          client.command.get_log('abcdefg'))
