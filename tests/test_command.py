@@ -4,15 +4,19 @@ import os
 
 from os import remove, getcwd
 from os.path import join, isfile
+from uuid import uuid4
 
 from utils import Rpc
 import client.command
+from client.logger import LOGGER
 
 
 class TestCommands(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         super(TestCommands, cls).setUpClass()
+
+        LOGGER.enable()
 
         if os.name == 'nt':
             cls.loop = asyncio.ProactorEventLoop()
@@ -23,7 +27,7 @@ class TestCommands(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.loop.close()
-
+        LOGGER.disable()
 
     def test_all_functions_in_rpc(self):
         """
@@ -38,28 +42,29 @@ class TestCommands(unittest.TestCase):
         self.assertRaises(
             ValueError,
             self.loop.run_until_complete,
-            client.command.execute("calcs.exe", "this is a arguments list"),
+            client.command.execute(uuid4().hex, "calcs.exe",
+                                   "this is a arguments list"),
         )
 
     def test_execution_wrong_prog_object(self):
         self.assertRaises(
             ValueError,
             self.loop.run_until_complete,
-            client.command.execute(["calcs.exe"], []),
+            client.command.execute(uuid4().hex, ["calcs.exe"], []),
         )
 
     def test_execution_wrong_arguments_elements(self):
         self.assertRaises(
             ValueError,
             self.loop.run_until_complete,
-            client.command.execute("calcs.exe", [1, 2, 34]),
+            client.command.execute(uuid4().hex, "calcs.exe", [1, 2, 34]),
         )
 
     def test_execution_not_existing_prog(self):
         self.assertRaises(
             FileNotFoundError,
             self.loop.run_until_complete,
-            client.command.execute("calcs.exe", []),
+            client.command.execute(uuid4().hex, "calcs.exe", []),
         )
 
     def test_execution_echo_shell(self):
@@ -72,7 +77,8 @@ class TestCommands(unittest.TestCase):
 
         self.assertEqual(
             0,
-            self.loop.run_until_complete(client.command.execute(prog, args)),
+            self.loop.run_until_complete(
+                client.command.execute(uuid4().hex, prog, args)),
         )
 
     def test_move_file_with_file(self):
@@ -83,7 +89,8 @@ class TestCommands(unittest.TestCase):
         try:
             self.loop.run_until_complete(
                 client.command.move_file(file_name, myfile_name, "_BACK"))
-            self.assertTrue(os.path.isfile(myfile_name)) # test if file was moved
+            self.assertTrue(
+                os.path.isfile(myfile_name))  # test if file was moved
         finally:
             os.remove(file_name)
             os.remove(myfile_name)
@@ -204,20 +211,23 @@ class TestCommands(unittest.TestCase):
         if os.name == 'nt':
             prog = "C:\\Windows\\System32\\cmd.exe"
             args = ["/c", "notepad.exe"]
+            return_code = 1
         else:
             prog = "/bin/sh"
             args = ["-c", "sleep 10"]
+            return_code = -15
 
         @asyncio.coroutine
         def create_and_cancel_task():
-            task = self.loop.create_task(client.command.execute(prog, args))
+            task = self.loop.create_task(
+                client.command.execute(uuid4().hex, prog, args))
             yield from asyncio.sleep(0.1)
             task.cancel()
             result = yield from task
             return result
 
         res = self.loop.run_until_complete(create_and_cancel_task())
-        self.assertTrue('Process got canceled and returned' in res)
+        self.assertEqual(return_code, res)
 
     def test_execution_directory(self):
         path = join(getcwd(), 'applications')
@@ -226,6 +236,8 @@ class TestCommands(unittest.TestCase):
         else:
             prog = join(path, 'echo.sh')
 
-        self.assertEqual(0, self.loop.run_until_complete(client.command.execute(prog, [])))
+        self.assertEqual(0,
+                         self.loop.run_until_complete(
+                             client.command.execute(uuid4().hex, prog, [])))
         self.assertTrue(isfile(join(path, 'test.txt')))
         remove(join(path, 'test.txt'))

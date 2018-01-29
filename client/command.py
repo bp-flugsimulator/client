@@ -13,6 +13,8 @@ from pathlib import PurePath
 
 from utils import Rpc
 
+from .logger import LOGGER
+
 
 @Rpc.method
 @asyncio.coroutine
@@ -24,9 +26,9 @@ def online():
     pass
 
 
-@Rpc.method
+@Rpc.method_with_uuid
 @asyncio.coroutine
-def execute(path, arguments):
+def execute(uuid, path, arguments):
     """
     Executes a subprocess and returns the exit code.
 
@@ -55,12 +57,23 @@ def execute(path, arguments):
             if not isinstance(arg, str):
                 raise ValueError("Element in arguments is not a string.")
 
-    process = yield from asyncio.create_subprocess_exec(
-        *([path] + arguments), cwd=str(PurePath(path).parent))
+    pure_path = PurePath(path)
+    log_file = open(
+        file=os.path.join(LOGGER.logdir, '{}-{}.log'.format(
+            pure_path.parts[-1], uuid)),
+        mode='wb')
 
     try:
-        code = yield from process.wait()
-        return code
+        process = yield from asyncio.create_subprocess_exec(
+            *([path] + arguments),
+            cwd=str(PurePath(path).parent),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT)
+
+        while not process.stdout.at_eof():
+            line = yield from process.stdout.read()
+            log_file.write(line)
+
     except asyncio.CancelledError:
         if platform.system() == "Windows":
             import psutil
@@ -69,9 +82,20 @@ def execute(path, arguments):
                 child.terminate()
 
         process.terminate()
-        yield from process.wait()
-        return 'Process got canceled and returned {}.'.format(
-            process.returncode)
+        log_file.write(
+            ('Process got terminated.{}'.format(os.linesep)).encode('utf_8'))
+
+    except Exception as err:
+        log_file.write(('Exception occured during the execution:{}{}'.format(
+            os.linesep, str(err))).encode('utf_8'))
+        log_file.close()
+        raise err
+
+    yield from process.wait()
+    log_file.write(('Finished with code {}.{}'.format(
+        process.returncode, os.linesep)).encode('utf_8'))
+    log_file.close()
+    return process.returncode
 
 
 @Rpc.method

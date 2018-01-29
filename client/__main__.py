@@ -6,9 +6,11 @@ import argparse
 import asyncio
 import sys
 import os
-import logging
+import shutil
+from datetime import datetime
 
 from utils import RpcReceiver
+from .logger import LOGGER
 
 
 def generate_uri(host, port, path):
@@ -54,40 +56,22 @@ def main():
 
     args = parser.parse_args()
 
-    url_listen = generate_uri(
+    url = generate_uri(
         args.host,
         args.port,
         "commands",
     )
 
-    url_send = generate_uri(
-        args.host,
-        args.port,
-        "notifications",
-    )
-
-    root = logging.getLogger()
-    root.setLevel(logging.DEBUG)
-
-    ch = logging.StreamHandler(sys.stdout)
-    ch.setLevel(logging.DEBUG)
-
-    formatter = logging.Formatter(
-        "[CLIENT] [%(asctime)s]: %(message)s",
-        datefmt='%M:%S',
-    )
-    ch.setFormatter(formatter)
-    root.addHandler(ch)
+    LOGGER.enable()
 
     print("Starting client.")
-
     if os.name == 'nt':
         loop = asyncio.ProactorEventLoop()
         asyncio.set_event_loop(loop)
     else:
         loop = asyncio.get_event_loop()
 
-    rpc = RpcReceiver(url_listen, url_send)
+    rpc = RpcReceiver(url)
     loop.run_until_complete(rpc.run())
     print("Exit client ...")
 
