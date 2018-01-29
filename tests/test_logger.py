@@ -32,6 +32,16 @@ class TestCommands(TestCase):
         rmtree(self.FOLDER)
         mkdir(self.FOLDER)
 
+    def test_no_preexisting_logfolder(self):
+        rmtree(self.FOLDER)
+        new_logger = ClientLogger()
+        new_logger.enable()
+        new_logger.disable()
+
+        dirs = listdir(self.FOLDER)
+        self.assertEqual(1, len(dirs))
+
+
     def test_multiple_preexisting_logfolders(self):
         dir_1 = datetime.now().strftime(ClientLogger.DATE_FORMAT)
         sleep(0.01)
