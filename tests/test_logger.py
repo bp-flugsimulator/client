@@ -5,8 +5,8 @@ from unittest import TestCase
 
 from time import sleep
 
-from os.path import isdir, join, isfile
-from os import mkdir, getcwd, listdir, remove
+from os.path import isdir, join
+from os import mkdir, getcwd, listdir, rmdir
 
 from shutil import rmtree
 
@@ -69,3 +69,5 @@ class TestCommands(TestCase):
         self.assertEqual(3, len(dirs))
         self.assertNotIn(dir_1, dirs)
         self.assertIn(dir_2, dirs)
+
+        rmdir(join(self.FOLDER, dir_unknown))
