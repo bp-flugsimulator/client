@@ -27,8 +27,7 @@ class TestCommands(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         super(TestCommands, cls).tearDownClass()
-        if os.name == 'nt':
-            cls.loop.close()
+        cls.loop.close()
         LOGGER.disable()
 
     def test_all_functions_in_rpc(self):
@@ -248,23 +247,24 @@ class TestCommands(unittest.TestCase):
         path = join(getcwd(), 'applications')
         if os.name == 'nt':
             prog = join(path, 'echo.bat')
+            args = []
         else:
-            prog = join(path, 'echo.sh')
+            prog = 'echo'
+            args = ['1234']
 
         uuid = uuid4().hex
         self.assertEqual(0,
                          self.loop.run_until_complete(
-                             client.command.execute(uuid, prog, [])))
+                             client.command.execute(uuid, prog, args)))
 
         res = self.loop.run_until_complete(client.command.get_log(uuid))
         if os.name == 'nt':
             self.assertIn(
                 b'echo 1234  1>test.txt \r\nFinished with code 0.\r\n', res)
+            remove(join(path, 'test.txt'))
         else:
-            self.assertIn(b'echo 1234  1>test.txt \nFinished with code 0.\n',
-                          res)
+            self.assertIn(b'1234\nFinished with code 0.\n', res)
 
-        remove(join(path, 'test.txt'))
 
     def test_get_log_unknown_uuid(self):
         self.assertRaises(FileNotFoundError, self.loop.run_until_complete,
