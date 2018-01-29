@@ -115,7 +115,7 @@ class TestCommands(unittest.TestCase):
             client.command.move_file("file.txt", 1, "ende"),
         )
 
-    def test_move_file_wrong_destination_path_object(self):
+    def test_move_file_wrong_ending_object(self):
         self.assertRaises(
             ValueError,
             self.loop.run_until_complete,

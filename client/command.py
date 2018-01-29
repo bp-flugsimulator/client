@@ -111,9 +111,9 @@ def move_file(source_path, destination_path, backup_ending):
     """
 
     if not isinstance(source_path, str):
-        raise ValueError("source Path is not a string!")
+        raise ValueError("source path is not a string!")
     if not isinstance(destination_path, str):
-        raise ValueError("destination Path is not a string!")
+        raise ValueError("destination path is not a string!")
     if not isinstance(backup_ending, str):
         raise ValueError("Backup file ending is not a string!")
     else:
@@ -238,41 +238,31 @@ def restore_file(source_path, destination_path, backup_ending, hash_value):
         source_path = os.path.abspath(source_path)
         destination_path = os.path.abspath(destination_path)
 
-        link_path = os.path.join(
-            os.path.dirname(destination_path),
-            os.path.basename(source_path),
-        )
         backup_path = destination_path + backup_ending
 
-        print(backup_path)
+        if not os.path.exists(destination_path):
+            os.rename(backup_path, destination_path)
+            return None
 
         md5 = hashlib.md5()
-        BUF_SIZE = 65536
 
         with open(destination_path, 'rb') as file_:
             while True:
-                data = file_.read(BUF_SIZE)
+                data = file_.read(65536)
                 if not data:
                     break
                 md5.update(data)
         hash_gen = "{0}".format(md5.hexdigest())
 
         if hash_value == hash_gen:
+            os.remove(destination_path)
             if os.path.exists(backup_path):
-                os.remove(destination_path)
                 os.rename(backup_path, destination_path)
             else:
-                raise FileNotFoundError(
-                    errno.ENOENT,
-                    os.strerror(errno.ENOENT),
-                    backup_path,
-                )
+                raise FileNotFoundError("No BACKUP file found")
         else:
-            raise FileNotFoundError(
-                errno.ENOENT,
-                os.strerror(errno.ENOENT),
-                destination_path,
-            )
+            raise FileNotFoundError("No Matching Hash Values")
+        return None
 
 
 @Rpc.method
