@@ -26,7 +26,9 @@ class TestCommands(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        cls.loop.close()
+        super(TestCommands, cls).tearDownClass()
+        if os.name == 'nt':
+            cls.loop.close()
         LOGGER.disable()
 
     def test_all_functions_in_rpc(self):
