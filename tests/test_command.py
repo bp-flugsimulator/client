@@ -1,8 +1,9 @@
 import unittest
 import asyncio
 import os
-import shutil
-import hashlib
+
+from os import remove, getcwd
+from os.path import join, isfile
 
 from utils import Rpc
 import client.command
@@ -18,6 +19,11 @@ class TestCommands(unittest.TestCase):
             asyncio.set_event_loop(cls.loop)
         else:
             cls.loop = asyncio.get_event_loop()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.loop.close()
+
 
     def test_all_functions_in_rpc(self):
         """
@@ -204,7 +210,7 @@ class TestCommands(unittest.TestCase):
     def test_cancel_execution(self):
         if os.name == 'nt':
             prog = "C:\\Windows\\System32\\cmd.exe"
-            args = ["/c", "PING 127.0.0.1>nul"]
+            args = ["/c", "notepad.exe"]
         else:
             prog = "/bin/sh"
             args = ["-c", "sleep 10"]
@@ -219,3 +225,14 @@ class TestCommands(unittest.TestCase):
 
         res = self.loop.run_until_complete(create_and_cancel_task())
         self.assertTrue('Process got canceled and returned' in res)
+
+    def test_execution_directory(self):
+        path = join(getcwd(), 'applications')
+        if os.name == 'nt':
+            prog = join(path, 'echo.bat')
+        else:
+            prog = join(path, 'echo.sh')
+
+        self.assertEqual(0, self.loop.run_until_complete(client.command.execute(prog, [])))
+        self.assertTrue(isfile(join(path, 'test.txt')))
+        remove(join(path, 'test.txt'))

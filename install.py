@@ -8,6 +8,7 @@ Example
 -------
     $python install.py --update
     $python install.py --upgrade
+    $python install.py --update_client 127.0.0.1:4242
 """
 
 from platform import system, architecture
@@ -153,10 +154,10 @@ if __name__ == "__main__":
         stderr.write(system() + ' is not officially supported but may work\n')
 
     if ARGS.update_client:
-        (file_name, _) = urlretrieve(
-            'http://' + str(ARGS.update_client) +
-            '/static/downloads/client.zip',
-            filename="client.zip")
+        URL = 'http://' + str(ARGS.update_client) + '/static/downloads/client.zip'
+        print('downloading update from ', URL)
+        (file_name, _) = urlretrieve(URL, filename="client.zip")
+        print('update files')
         unpack_archive(file_name)
         remove(file_name)
 

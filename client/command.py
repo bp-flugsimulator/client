@@ -9,6 +9,8 @@ import subprocess
 import errno
 import hashlib
 
+from pathlib import PurePath
+
 from utils import Rpc
 
 
@@ -53,12 +55,8 @@ def execute(path, arguments):
             if not isinstance(arg, str):
                 raise ValueError("Element in arguments is not a string.")
 
-    if platform.system() == "Windows":
-        process = yield from asyncio.create_subprocess_exec(
-            *([path] + arguments), creationflags=subprocess.CREATE_NEW_CONSOLE)
-    else:
-        process = yield from asyncio.create_subprocess_exec(
-            *([path] + arguments))
+    process = yield from asyncio.create_subprocess_exec(
+        *([path] + arguments), cwd=str(PurePath(path).parent))
 
     try:
         code = yield from process.wait()
