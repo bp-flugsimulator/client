@@ -26,9 +26,9 @@ def online():
     pass
 
 
-@Rpc.method_with_uuid
+@Rpc.method
 @asyncio.coroutine
-def execute(uuid, path, arguments):
+def execute(own_uuid, path, arguments):
     """
     Executes a subprocess and returns the exit code.
 
@@ -60,7 +60,7 @@ def execute(uuid, path, arguments):
     pure_path = PurePath(path)
     log_file = open(
         file=os.path.join(LOGGER.logdir, '{}-{}.log'.format(
-            pure_path.parts[-1], uuid)),
+            pure_path.parts[-1], own_uuid)),
         mode='wb')
 
     try:
@@ -71,8 +71,9 @@ def execute(uuid, path, arguments):
             stderr=subprocess.STDOUT)
 
         while not process.stdout.at_eof():
-            line = yield from process.stdout.read()
+            line = yield from process.stdout.readline()
             log_file.write(line)
+            log_file.flush()
 
     except asyncio.CancelledError:
         if platform.system() == "Windows":
@@ -98,26 +99,26 @@ def execute(uuid, path, arguments):
     return process.returncode
 
 
-@Rpc.method_with_uuid
+@Rpc.method
 @asyncio.coroutine
-def get_log(uuid):
+def get_log(target_uuid):
     file_name = None
     for entry in os.listdir(LOGGER.logdir):
-        if uuid in entry:
+        if target_uuid in entry:
             file_name = entry
             break
 
     if file_name is None:
         raise FileNotFoundError('log does not exist')
 
-    message = b''
+    log = b''
     with open(
             file=os.path.join(LOGGER.logdir, file_name),
             mode='rb') as log_file:
         for line in log_file.readlines():
-            message += line
+            log += line
 
-    return message
+    return {'log': log.decode(), 'uuid': target_uuid}
 
 
 @Rpc.method
