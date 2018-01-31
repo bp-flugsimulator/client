@@ -6,9 +6,8 @@ the system specific version from the internet into ./libs and use the flag
 
 Example
 -------
-    $python install.py --update
-    $python install.py --upgrade
-    $python install.py --update_client 127.0.0.1:4242
+    $python install.py --download-packages
+    $python install.py --download-client 127.0.0.1:4242
 """
 
 from platform import system, architecture
@@ -122,24 +121,18 @@ if __name__ == "__main__":
     PARSER = ArgumentParser(
         description='Updates and installs packages needed for the client.')
     PARSER.add_argument(
-        '--upgrade',
-        help='installs all packages from ./libs',
-        action='store_const',
-        const=True)
-    PARSER.add_argument(
-        '--update',
+        '--download-packages',
         help='downloads all packages from requirements.txt to ./libs',
         action='store_const',
         const=True)
     PARSER.add_argument(
-        '--update_client',
+        '--download-client',
         help='updates the client from the given server',
+        metavar=('IP:PORT'),
         type=str)
 
     ARGS = PARSER.parse_args()
 
-    if not (ARGS.update or ARGS.upgrade or ARGS.update_client):
-        PARSER.print_help()
 
     # select requirements file
     if system() == 'Windows':
@@ -153,7 +146,7 @@ if __name__ == "__main__":
     else:
         stderr.write(system() + ' is not officially supported but may work\n')
 
-    if ARGS.update_client:
+    if ARGS.download_client:
         URL = 'http://' + str(ARGS.update_client) + '/static/downloads/client.zip'
         print('downloading update from ', URL)
         (file_name, _) = urlretrieve(URL, filename="client.zip")
@@ -161,12 +154,11 @@ if __name__ == "__main__":
         unpack_archive(file_name)
         remove(file_name)
 
-    if ARGS.update:
+    if ARGS.download_packages:
         with open(REQUIREMENTS_FILE) as requirements:
             for library in requirements:
                 download(library)
 
-    if ARGS.upgrade:
-        with open(REQUIREMENTS_FILE) as requirements:
-            for library in requirements:
-                install(library)
+    with open(REQUIREMENTS_FILE) as requirements:
+        for library in requirements:
+            install(library)

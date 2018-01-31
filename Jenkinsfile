@@ -8,8 +8,7 @@ pipeline {
   stages {
     stage('Depndency Install') {
       steps {
-        bat 'python -m pip uninstall psutil -y'
-        bat 'python install.py --upgrade'
+        bat 'python install.py'
       }
     }
     stage('Testing') {
