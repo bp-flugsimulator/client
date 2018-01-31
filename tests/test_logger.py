@@ -41,7 +41,6 @@ class TestCommands(TestCase):
         dirs = listdir(self.FOLDER)
         self.assertEqual(1, len(dirs))
 
-
     def test_multiple_preexisting_logfolders(self):
         dir_1 = datetime.now().strftime(ClientLogger.DATE_FORMAT)
         sleep(0.01)

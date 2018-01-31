@@ -259,13 +259,13 @@ class TestCommands(unittest.TestCase):
 
         res = self.loop.run_until_complete(client.command.get_log(uuid))
         if os.name == 'nt':
+            self.assertIn(
+                'echo 1234  1>test.txt \r\nFinished with code 0.\r\n',
+                res['log'],
+            )
             self.assertEqual(
-                {
-                    'log':
-                    'echo 1234  1>test.txt \r\nFinished with code 0.\r\n',
-                    'uuid': uuid,
-                },
-                res,
+                uuid,
+                res['uuid'],
             )
             remove(join(path, 'test.txt'))
         else:
