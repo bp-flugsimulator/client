@@ -43,16 +43,16 @@ class TestCommands(TestCase):
 
     def test_multiple_preexisting_logfolders(self):
         dir_1 = datetime.now().strftime(ClientLogger.DATE_FORMAT)
-        sleep(0.01)
+        sleep(0.1)
         dir_2 = datetime.now().strftime(ClientLogger.DATE_FORMAT)
-        sleep(0.01)
+        sleep(0.1)
         dir_3 = datetime.now().strftime(ClientLogger.DATE_FORMAT)
 
         mkdir(join(self.FOLDER, dir_1))
         mkdir(join(self.FOLDER, dir_2))
         mkdir(join(self.FOLDER, dir_3))
 
-        sleep(0.01)
+        sleep(0.1)
         logger.LOGGER.enable()
         logger.LOGGER.disable()
 
@@ -65,14 +65,14 @@ class TestCommands(TestCase):
     def test_unknown_preexisting_logfolders(self):
         dir_unknown = 'unknown'
         dir_1 = datetime.now().strftime(ClientLogger.DATE_FORMAT)
-        sleep(0.01)
+        sleep(0.1)
         dir_2 = datetime.now().strftime(ClientLogger.DATE_FORMAT)
 
         mkdir(join(self.FOLDER, dir_1))
         mkdir(join(self.FOLDER, dir_2))
         mkdir(join(self.FOLDER, dir_unknown))
 
-        sleep(0.01)
+        sleep(0.1)
         logger.LOGGER.enable()
         logger.LOGGER.disable()
 
