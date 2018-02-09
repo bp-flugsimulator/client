@@ -11,7 +11,7 @@ Example
 """
 
 from platform import system, architecture
-from os import listdir, getcwd, remove
+from os import listdir, getcwd, remove, mkdir, chdir
 from os.path import join
 from sys import stderr
 
@@ -19,7 +19,7 @@ from argparse import ArgumentParser
 
 from urllib.request import urlretrieve
 
-from shutil import unpack_archive
+from shutil import unpack_archive, rmtree
 
 import pip
 
@@ -88,8 +88,29 @@ def install(lib_name):
     if pip.main(args) != 0:
         raise Exception('could not install ' + lib_name + ' from file')
 
+def download_client(address):
+    """
+    Downloads client files from the given address.
 
-def download(lib_name):
+    Parameter
+    ---------
+    address: str
+        address of the server
+    """
+    URL = 'http://' + address + '/static/downloads/client.zip'
+
+    print('downloading update from ', URL)
+    (file_name, _) = urlretrieve(URL, filename="client.zip")
+
+    print('clear lib folder')
+    rmtree(join(chdir(), 'libs'))
+    mkdir(join(chdir(), 'libs'))
+
+    print('update files')
+    unpack_archive(file_name)
+    remove(file_name)
+
+def download_libary(lib_name):
     """
     Downloads a library to ./libs
 
@@ -147,17 +168,12 @@ if __name__ == "__main__":
         stderr.write(system() + ' is not officially supported but may work\n')
 
     if ARGS.download_client:
-        URL = 'http://' + str(ARGS.update_client) + '/static/downloads/client.zip'
-        print('downloading update from ', URL)
-        (file_name, _) = urlretrieve(URL, filename="client.zip")
-        print('update files')
-        unpack_archive(file_name)
-        remove(file_name)
+        download_client(ARGS.download_client)
 
     if ARGS.download_packages:
         with open(REQUIREMENTS_FILE) as requirements:
             for library in requirements:
-                download(library)
+                download_libary(library)
 
     with open(REQUIREMENTS_FILE) as requirements:
         for library in requirements:
