@@ -14,6 +14,39 @@ from pathlib import PurePath
 from utils import Rpc
 
 
+def hash_file(path):
+    """
+    Generates a hash string from a given file.
+
+    Parameters
+    ----------
+        path: str
+            A path to a file.
+
+    Returns
+    -------
+        A str which contains the hash in hex encoding
+
+    Exceptions
+    ----------
+        ValueError: if the path does not point to a file
+    """
+
+    if not os.path.isfile(path):
+        return ValueError("The given path is not a file.")
+
+    md5 = hashlib.md5()
+
+    with open(path, 'rb') as file_:
+        while True:
+            data = file_.read(65536)
+            if not data:
+                break
+            md5.update(data)
+
+    return "{0}".format(md5.hexdigest())
+
+
 @Rpc.method
 @asyncio.coroutine
 def online():
@@ -140,18 +173,10 @@ def move_file(source_path, destination_path, backup_ending):
                     )
                 os.rename(destination_path, backup_file_name)
             # finally (rename and) link source to destination
-            md5 = hashlib.md5()
-            BUF_SIZE = 65536
 
-            os.link(source_path, destination_path)
-            with open(destination_path, 'rb') as file_:
-                while True:
-                    data = file_.read(BUF_SIZE)
-                    if not data:
-                        break
-                    md5.update(data)
-            return "{0}".format(md5.hexdigest())
-
+            return hash_file(destination_path)
+        else:
+            raise ValueError("Moving a directory is not supported.")
         # # source is folder (NOT POSSIBLE ANYMORE)
         # elif os.path.isdir(source_path):
         #     dst_dir = os.path.join(
@@ -194,12 +219,12 @@ def move_file(source_path, destination_path, backup_ending):
         #             dst_file = os.path.join(dst_dir, file_)
         #             # link source to destination
         #             os.link(src_file, dst_file)
-        else:
-            raise FileNotFoundError(
-                errno.ENOENT,
-                os.strerror(errno.ENOENT),
-                source_path,
-            )
+        # else:
+        #     raise FileNotFoundError(
+        #         errno.ENOENT,
+        #         os.strerror(errno.ENOENT),
+        #         source_path,
+        #     )
 
 
 @Rpc.method
@@ -239,27 +264,21 @@ def restore_file(source_path, destination_path, backup_ending, hash_value):
         backup_path = destination_path + backup_ending
 
         if not os.path.exists(destination_path):
-            os.rename(backup_path, destination_path)
+            if os.path.exists(backup_path):
+                os.rename(backup_path, destination_path)
+
             return None
 
-        md5 = hashlib.md5()
-
-        with open(destination_path, 'rb') as file_:
-            while True:
-                data = file_.read(65536)
-                if not data:
-                    break
-                md5.update(data)
-        hash_gen = "{0}".format(md5.hexdigest())
+        hash_gen = hash_file(destination_path)
 
         if hash_value == hash_gen:
             os.remove(destination_path)
             if os.path.exists(backup_path):
                 os.rename(backup_path, destination_path)
-            else:
-                raise FileNotFoundError("No BACKUP file found")
         else:
-            raise FileNotFoundError("No Matching Hash Values")
+            raise FileNotFoundError(
+                "The file was changed while it was replaced. Remove it yourself."
+            )
         return None
 
 
