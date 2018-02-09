@@ -6,7 +6,7 @@ RUN apk add --no-cache python3 git python3-dev gcc musl-dev linux-headers
 
 WORKDIR /usr/src/app
 
-COPY requirements.txt /src/requirements.txt
+COPY linux_requirements.txt /src/requirements.txt
 RUN pip3 install --no-cache-dir -r /src/requirements.txt
 
 COPY . /usr/src/app
