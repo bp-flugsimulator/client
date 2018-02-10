@@ -8,29 +8,90 @@ from os.path import join, isfile
 from utils import Rpc
 import client.command
 
+from client.command import Helper
 
-class TestCommands(unittest.TestCase):
+
+class EventLoopTestCase(unittest.TestCase):
+    """
+    A TestCase class which provides an event loop, to test async functions.
+    """
+
     @classmethod
     def setUpClass(cls):
-        super(TestCommands, cls).setUpClass()
+        super(EventLoopTestCase, cls).setUpClass()
 
         if os.name == 'nt':
             cls.loop = asyncio.ProactorEventLoop()
             asyncio.set_event_loop(cls.loop)
         else:
-            cls.loop = asyncio.get_event_loop()
+            cls.loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(cls.loop)
 
     @classmethod
     def tearDownClass(cls):
         cls.loop.close()
 
 
+class TestFile:
+    """
+    A class which will generate a file.
+
+    Format:
+        [
+            (PATH, CREATE),
+            ...
+        ]
+    """
+
+    def __init__(self, base, paths):
+        self.paths = paths
+        self.file = None
+        self.base = base
+
+    def __enter__(self):
+        for (path, create) in self.paths:
+            if create:
+                path = os.path.join(self.base, path)
+
+                if os.path.exists(path):
+                    raise ValueError(
+                        "File allready exists ... can not override!")
+
+                print("Creating file {}".format(path))
+                open(path, "w").close()
+
+        return list(map(lambda x: os.path.join(self.base, x[0]), self.paths))
+
+    def __exit__(self, type, value, traceback):
+        print(os.listdir(self.base))
+
+        errors = []
+
+        for (path, created) in self.paths:
+            path = os.path.join(self.base, path)
+
+            if not os.path.exists(path):
+                if created:
+                    errors.append(path)
+            else:
+                print("Deleting file {}".format(path))
+                os.remove(path)
+
+        if errors:
+            raise ValueError("Could not delete crated file: {}".format(errors))
+
+
+class TestCommands(EventLoopTestCase):
     def test_all_functions_in_rpc(self):
         """
         Tests if all functions in commands are set with Rpc flag.
         """
         import types
+
         for func in dir(client.command):
+            if Helper.get(func) is not None:
+                continue
+
             if isinstance(getattr(client.command, func), types.FunctionType):
                 self.assertEqual(getattr(client.command, func), Rpc.get(func))
 
@@ -75,134 +136,6 @@ class TestCommands(unittest.TestCase):
             self.loop.run_until_complete(client.command.execute(prog, args)),
         )
 
-    def test_move_file_with_file(self):
-        file_name = "testfile.txt"
-        myfile_name = "testfile_link.txt"
-
-        open(file_name, "w").close()
-        try:
-            self.loop.run_until_complete(
-                client.command.move_file(file_name, myfile_name, "_BACK"))
-            self.assertTrue(os.path.isfile(myfile_name)) # test if file was moved
-        finally:
-            os.remove(file_name)
-            os.remove(myfile_name)
-
-    # def test_move_file_with_dir(self):
-    #     file_name = 'file.txt'
-    #     source = os.path.abspath('./sourcefolder/')
-    #     if not os.path.isdir(source):
-    #         os.makedirs(source)
-    #     dest = os.path.abspath('./destfolder/')
-    #     if not os.path.isdir(dest):
-    #         os.makedirs(dest)
-
-    #     open(os.path.join(source, file_name), "w").close()
-
-    #     self.loop.run_until_complete(client.command.move_file(source, dest))
-    #     self.assertTrue(
-    #         os.path.isfile(
-    #             os.path.join(dest, os.path.join(source, file_name))))
-
-    #     shutil.rmtree(source)
-    #     shutil.rmtree(dest)
-
-    def test_move_file_wrong_source_path_object(self):
-        self.assertRaises(
-            ValueError,
-            self.loop.run_until_complete,
-            client.command.move_file(1, "file.txt", "ende"),
-        )
-
-    def test_move_file_wrong_destination_path_object(self):
-        self.assertRaises(
-            ValueError,
-            self.loop.run_until_complete,
-            client.command.move_file("file.txt", 1, "ende"),
-        )
-
-    def test_move_file_wrong_ending_object(self):
-        self.assertRaises(
-            ValueError,
-            self.loop.run_until_complete,
-            client.command.move_file("file.txt", "ende", 1),
-        )
-
-    def test_move_file_backup_exists_error_file(self):
-        source = os.path.abspath("./src.txt")
-        dest = os.path.abspath("./dest.txt")
-        back = os.path.abspath("./dest.txt_BACK")
-
-        try:
-            open(source, "w").close()
-            open(dest, "w").close()
-            open(back, "w").close()
-
-            self.assertRaises(
-                FileExistsError,
-                self.loop.run_until_complete,
-                client.command.move_file(source, dest, "_BACK"),
-            )
-        finally:
-            os.remove(source)
-            os.remove(dest)
-            os.remove(back)
-
-    def test_move_file_source_does_not_exist(self):
-        self.assertRaises(
-            FileNotFoundError,
-            self.loop.run_until_complete,
-            client.command.move_file("source.txt", "dest.txt", "_BACK"),
-        )
-
-    # def test_move_file_backup_exists_error_dir(self):
-
-    #     file_name = 'file.txt'
-    #     back = '_BACK'
-    #     source = os.path.abspath('./sourcefolder2/')
-    #     dest = os.path.abspath('./destfolder2/')
-    #     dest_dir = os.path.abspath('./destfolder2/sourcefolder2')
-    #     dest_back = os.path.abspath('./destfolder2/sourcefolder2' + back)
-
-    #     if not os.path.isdir(source):
-    #         os.makedirs(source)
-    #     if not os.path.isdir(dest):
-    #         os.makedirs(dest)
-    #     if not os.path.isdir(dest_back):
-    #         os.makedirs(dest_back)
-    #     if not os.path.isdir(dest_dir):
-    #         os.makedirs(dest_dir)
-
-    #     open(os.path.join(source, file_name), "w").close()
-
-    #     self.assertRaises(
-    #         FileExistsError,
-    #         self.loop.run_until_complete,
-    #         client.command.move_file(source, dest),
-    #     )
-    #     shutil.rmtree(source)
-    #     shutil.rmtree(dest)
-
-    # def test_move_file_destination_not_directory(self):
-    #     file_name = 'file.txt'
-    #     source = os.path.abspath('./sourcefolder3/')
-    #     if not os.path.isdir(source):
-    #         os.makedirs(source)
-    #     dest = os.path.abspath('./destfolder3/')
-    #     if not os.path.isdir(dest):
-    #         os.makedirs(dest)
-
-    #     open(os.path.join(source, file_name), "w").close()
-    #     open(os.path.join(dest, file_name), 'w').close()
-
-    #     self.assertRaises(
-    #         NotADirectoryError,
-    #         self.loop.run_until_complete,
-    #         client.command.move_file(source, os.path.join(dest, file_name)),
-    #     )
-    #     shutil.rmtree(source)
-    #     shutil.rmtree(dest)
-
     def test_online(self):
         result = self.loop.run_until_complete(client.command.online())
         self.assertIsNone(result)
@@ -233,6 +166,119 @@ class TestCommands(unittest.TestCase):
         else:
             prog = join(path, 'echo.sh')
 
-        self.assertEqual(0, self.loop.run_until_complete(client.command.execute(prog, [])))
+        self.assertEqual(0,
+                         self.loop.run_until_complete(
+                             client.command.execute(prog, [])))
         self.assertTrue(isfile(join(path, 'test.txt')))
         remove(join(path, 'test.txt'))
+
+
+class FileCommandTests(EventLoopTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super(FileCommandTests, cls).setUpClass()
+
+        cls.backup_ending = "_BACK"
+        cls.working_dir = os.path.abspath('./unittest.filecommand/')
+
+        if not os.path.exists(cls.working_dir):
+            os.mkdir(cls.working_dir)
+
+    @classmethod
+    def tearDownClass(cls):
+        super(FileCommandTests, cls).tearDownClass()
+        os.rmdir(cls.working_dir)
+
+    def setUp(self):
+        self.assertTrue(len(os.listdir(self.working_dir)) == 0)
+
+    def tearDown(self):
+        self.assertTrue(len(os.listdir(self.working_dir)) == 0)
+
+    def test_move_file_destination_exists(self):
+        source = "test.abc"
+        destination = "test.abc.link"
+        backup = destination + self.backup_ending
+
+        with TestFile(self.working_dir, [
+            (source, True),
+            (destination, True),
+            (backup, False),
+        ]) as (source, destination, backup):
+            self.loop.run_until_complete(
+                client.command.move_file(source, destination,
+                                         self.backup_ending))
+
+            self.assertTrue(os.path.isfile(destination))
+            self.assertTrue(os.path.isfile(backup))
+
+    def test_move_file_destination_not_exists(self):
+        source = "test.abc"
+        destination = "test.abc.link"
+        backup = destination + self.backup_ending
+
+        with TestFile(self.working_dir, [
+            (source, True),
+            (destination, False),
+            (backup, False),
+        ]) as (source, destination, backup):
+            self.loop.run_until_complete(
+                client.command.move_file(source, destination,
+                                         self.backup_ending))
+
+            self.assertTrue(os.path.isfile(destination))
+            self.assertFalse(os.path.isfile(backup))
+
+    def test_move_file_source_not_exists(self):
+        source = "test.abc"
+        destination = "test.abc.link"
+
+        self.assertRaises(
+            FileNotFoundError,
+            self.loop.run_until_complete,
+            client.command.move_file(
+                source,
+                destination,
+                self.backup_ending,
+            ),
+        )
+
+        self.assertFalse(os.path.isfile(destination))
+
+    def test_move_file_backup_exists(self):
+        source = "test.abc"
+        destination = "test.abc.link"
+        backup = destination + self.backup_ending
+
+        with TestFile(self.working_dir, [
+            (source, True),
+            (destination, True),
+            (backup, True),
+        ]) as (source, destination, backup):
+            self.assertRaises(FileExistsError, self.loop.run_until_complete,
+                              client.command.move_file(
+                                  source,
+                                  destination,
+                                  self.backup_ending,
+                              ))
+
+    def test_move_file_wrong_source_path_object(self):
+        self.assertRaises(
+            ValueError,
+            self.loop.run_until_complete,
+            client.command.move_file(1, "file.txt", "ende"),
+        )
+
+    def test_move_file_wrong_destination_path_object(self):
+        self.assertRaises(
+            ValueError,
+            self.loop.run_until_complete,
+            client.command.move_file("file.txt", 1, "ende"),
+        )
+
+    def test_move_file_wrong_ending_object(self):
+        self.assertRaises(
+            ValueError,
+            self.loop.run_until_complete,
+            client.command.move_file("file.txt", "ende", 1),
+        )

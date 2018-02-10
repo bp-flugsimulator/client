@@ -154,7 +154,8 @@ if __name__ == "__main__":
         stderr.write(system() + ' is not officially supported but may work\n')
 
     if ARGS.update_client:
-        URL = 'http://' + str(ARGS.update_client) + '/static/downloads/client.zip'
+        URL = 'http://' + str(
+            ARGS.update_client) + '/static/downloads/client.zip'
         print('downloading update from ', URL)
         (file_name, _) = urlretrieve(URL, filename="client.zip")
         print('update files')

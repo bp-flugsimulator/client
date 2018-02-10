@@ -12,8 +12,37 @@ import hashlib
 from pathlib import PurePath
 
 from utils import Rpc
+import utils.rpc
 
 
+class Helper:
+    """
+    Stores all functions which are helper functions.
+    """
+    methods = []
+    function = utils.rpc.method_wrapper(methods)
+
+    @staticmethod
+    def get(fun):
+        """
+        Searches for a function with a given name.
+
+        Arguments
+        ---------
+            fun: str, function name
+
+        Returns
+        -------
+            Function Handle or None
+        """
+        for f in Helper.methods:
+            if f.__name__ == fun:
+                return f
+
+        return None
+
+
+@Helper.function
 def hash_file(path):
     """
     Generates a hash string from a given file.
@@ -153,78 +182,47 @@ def move_file(source_path, destination_path, backup_ending):
         # File ending of backup files
         backup_file_ending = backup_ending
 
+        if not os.path.exists(source_path):
+            raise FileNotFoundError(
+                errno.ENOENT,
+                os.strerror(errno.ENOENT),
+                source_path,
+            )
+
         # source is file
         if os.path.isfile(source_path):
             source_file = os.path.basename(source_path)
-            # destination is folder
-            if os.path.isdir(destination_path):
-                destination_path = os.path.join(destination_path, source_file)
-            backup_file_name = destination_path + backup_file_ending
+
             # destination file with name of source exists
             if os.path.islink(destination_path):
+                print("Removed destination link")
                 os.remove(destination_path)
             elif os.path.isfile(destination_path):
                 # Backup file name already exists
+                backup_file_name = destination_path + backup_file_ending
+
                 if os.path.exists(backup_file_name):
                     raise FileExistsError(
                         errno.EEXIST,
                         os.strerror(errno.EEXIST),
                         backup_file_name,
                     )
-                os.rename(destination_path, backup_file_name)
-            # finally (rename and) link source to destination
+                else:
+                    print("Moved to BACKUP")
+                    # move old file to backup
+                    os.rename(destination_path, backup_file_name)
+            elif os.path.isdir(destination_path):
+                # destination is folder
+                destination_path = os.path.join(destination_path, source_file)
+
+            # finally link source to destination
+            os.link(source_path, destination_path)
 
             return hash_file(destination_path)
         else:
-            raise ValueError("Moving a directory is not supported.")
-        # # source is folder (NOT POSSIBLE ANYMORE)
-        # elif os.path.isdir(source_path):
-        #     dst_dir = os.path.join(
-        #         destination_path,
-        #         os.path.basename(source_path),
-        #     )
-        #     # destination cant be a file if source is folder
-        #     if os.path.isfile(destination_path):
-        #         raise NotADirectoryError(
-        #             errno.ENOTDIR,
-        #             os.strerror(errno.ENOTDIR),
-        #             destination_path,
-        #         )
-        #     if os.path.isdir(dst_dir):
-        #         # Backup file name already exits
-        #         if os.path.exists(dst_dir + backup_file_ending):
-        #             raise FileExistsError(
-        #                 errno.EEXIST,
-        #                 os.strerror(errno.EEXIST),
-        #                 dst_dir + backup_file_ending,
-        #             )
-        #         os.rename(
-        #             dst_dir,
-        #             dst_dir + backup_file_ending,
-        #         )
-        #     for src_dir, _, files in os.walk(source_path):
-        #         dest_src = os.path.join(
-        #             os.path.basename(destination_path),
-        #             os.path.basename(source_path),
-        #         )
-        #         dst_dir = src_dir.replace(
-        #             os.path.basename(source_path),
-        #             dest_src,
-        #         )
-        #         # If source folder does not exist in destination create it.
-        #         if not os.path.exists(dst_dir):
-        #             os.makedirs(dst_dir)
-        #         for file_ in files:
-        #             src_file = os.path.join(src_dir, file_)
-        #             dst_file = os.path.join(dst_dir, file_)
-        #             # link source to destination
-        #             os.link(src_file, dst_file)
-        # else:
-        #     raise FileNotFoundError(
-        #         errno.ENOENT,
-        #         os.strerror(errno.ENOENT),
-        #         source_path,
-        #     )
+            raise ValueError(
+                "Moving a directory is not supported. ({})".format(
+                    source_path))
 
 
 @Rpc.method
@@ -276,9 +274,9 @@ def restore_file(source_path, destination_path, backup_ending, hash_value):
             if os.path.exists(backup_path):
                 os.rename(backup_path, destination_path)
         else:
-            raise FileNotFoundError(
-                "The file was changed while it was replaced. Remove it yourself."
-            )
+            raise ValueError(
+                "The file {} was changed while it was replaced. Remove it yourself.".
+                format(destination_path))
         return None
 
 
