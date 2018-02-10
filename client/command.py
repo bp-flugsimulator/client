@@ -60,10 +60,6 @@ def hash_file(path):
     ----------
         ValueError: if the path does not point to a file
     """
-
-    if not os.path.isfile(path):
-        return ValueError("The given path is not a file.")
-
     md5 = hashlib.md5()
 
     with open(path, 'rb') as file_:
@@ -73,7 +69,7 @@ def hash_file(path):
                 break
             md5.update(data)
 
-    return "{0}".format(md5.hexdigest())
+    return "{}".format(md5.hexdigest())
 
 
 @Rpc.method
@@ -193,11 +189,12 @@ def move_file(source_path, destination_path, backup_ending):
         if os.path.isfile(source_path):
             source_file = os.path.basename(source_path)
 
+            if os.path.isdir(destination_path):
+                # destination is folder
+                destination_path = os.path.join(destination_path, source_file)
+
             # destination file with name of source exists
-            if os.path.islink(destination_path):
-                print("Removed destination link")
-                os.remove(destination_path)
-            elif os.path.isfile(destination_path):
+            if os.path.isfile(destination_path):
                 # Backup file name already exists
                 backup_file_name = destination_path + backup_file_ending
 
@@ -211,9 +208,6 @@ def move_file(source_path, destination_path, backup_ending):
                     print("Moved to BACKUP")
                     # move old file to backup
                     os.rename(destination_path, backup_file_name)
-            elif os.path.isdir(destination_path):
-                # destination is folder
-                destination_path = os.path.join(destination_path, source_file)
 
             # finally link source to destination
             os.link(source_path, destination_path)
@@ -269,6 +263,15 @@ def restore_file(source_path, destination_path, backup_ending, hash_value):
 
         hash_gen = hash_file(destination_path)
 
+        if hash_value != hash_gen:
+            # TODO: verify
+
+            # if the hash values do not match then
+            # check if the source file was changed
+            # if the source file was changed but
+            # the files are still linked then proceed.
+            hash_value = hash_file(source_path)
+
         if hash_value == hash_gen:
             os.remove(destination_path)
             if os.path.exists(backup_path):
@@ -277,6 +280,7 @@ def restore_file(source_path, destination_path, backup_ending, hash_value):
             raise ValueError(
                 "The file {} was changed while it was replaced. Remove it yourself.".
                 format(destination_path))
+
         return None
 
 

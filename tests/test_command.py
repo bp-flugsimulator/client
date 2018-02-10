@@ -1,6 +1,9 @@
 import unittest
 import asyncio
 import os
+import random
+import string
+from hashlib import md5
 
 from os import remove, getcwd
 from os.path import join, isfile
@@ -43,10 +46,10 @@ class TestFile:
         ]
     """
 
-    def __init__(self, base, paths):
+    def __init__(self, base, paths, removing=False):
         self.paths = paths
-        self.file = None
         self.base = base
+        self.removing = removing
 
     def __enter__(self):
         for (path, create) in self.paths:
@@ -58,7 +61,9 @@ class TestFile:
                         "File allready exists ... can not override!")
 
                 print("Creating file {}".format(path))
-                open(path, "w").close()
+
+                with open(path, "w") as fil:
+                    fil.write(str(create))
 
         return list(map(lambda x: os.path.join(self.base, x[0]), self.paths))
 
@@ -71,7 +76,7 @@ class TestFile:
             path = os.path.join(self.base, path)
 
             if not os.path.exists(path):
-                if created:
+                if not self.removing:
                     errors.append(path)
             else:
                 print("Deleting file {}".format(path))
@@ -181,6 +186,20 @@ class FileCommandTests(EventLoopTestCase):
         cls.backup_ending = "_BACK"
         cls.working_dir = os.path.abspath('./unittest.filecommand/')
 
+        allow_chars = string.ascii_letters + string.digits
+
+        string1 = ''.join([random.choice(allow_chars) for n in range(32)])
+        string2 = ''.join([random.choice(allow_chars) for n in range(32)])
+
+        m1 = md5()
+        m1.update(string1.encode('utf-8'))
+
+        m2 = md5()
+        m2.update(string2.encode('utf-8'))
+
+        cls.hash1 = ("{}".format(m1.hexdigest()), string1)
+        cls.hash2 = ("{}".format(m2.hexdigest()), string2)
+
         if not os.path.exists(cls.working_dir):
             os.mkdir(cls.working_dir)
 
@@ -194,6 +213,19 @@ class FileCommandTests(EventLoopTestCase):
 
     def tearDown(self):
         self.assertTrue(len(os.listdir(self.working_dir)) == 0)
+
+    def test_move_file_source_directory(self):
+        source = os.path.join(self.working_dir, "testdir_source")
+        os.mkdir(source)
+
+        try:
+            self.assertRaises(
+                ValueError,
+                self.loop.run_until_complete,
+                client.command.move_file(source, "", self.backup_ending),
+            )
+        finally:
+            os.rmdir(source)
 
     def test_move_file_destination_exists(self):
         source = "test.abc"
@@ -215,19 +247,16 @@ class FileCommandTests(EventLoopTestCase):
     def test_move_file_destination_not_exists(self):
         source = "test.abc"
         destination = "test.abc.link"
-        backup = destination + self.backup_ending
 
         with TestFile(self.working_dir, [
             (source, True),
             (destination, False),
-            (backup, False),
-        ]) as (source, destination, backup):
+        ]) as (source, destination):
             self.loop.run_until_complete(
                 client.command.move_file(source, destination,
                                          self.backup_ending))
 
             self.assertTrue(os.path.isfile(destination))
-            self.assertFalse(os.path.isfile(backup))
 
     def test_move_file_source_not_exists(self):
         source = "test.abc"
@@ -262,6 +291,79 @@ class FileCommandTests(EventLoopTestCase):
                                   self.backup_ending,
                               ))
 
+    def test_move_file_destination_folder_success(self):
+        source = "test.abc"
+        destination = "./testdir"
+
+        os.mkdir(os.path.join(self.working_dir, destination))
+
+        try:
+            with TestFile(self.working_dir, [
+                (source, True),
+                (os.path.join(destination, source), False),
+            ]) as (source, destination_file):
+                self.loop.run_until_complete(
+                    client.command.move_file(
+                        source,
+                        os.path.join(self.working_dir, destination),
+                        self.backup_ending,
+                    ))
+
+                self.assertTrue(os.path.exists(destination_file))
+        finally:
+            os.rmdir(os.path.join(self.working_dir, destination))
+
+    def test_move_file_destination_folder_destination_exist(self):
+        source = "test.abc"
+        destination = "./testdir"
+        backup = source + self.backup_ending
+
+        os.mkdir(os.path.join(self.working_dir, destination))
+
+        try:
+            with TestFile(self.working_dir, [
+                (source, True),
+                (os.path.join(destination, source), True),
+                (os.path.join(destination, backup), False),
+            ]) as (source, destination_file, backup_file):
+                self.loop.run_until_complete(
+                    client.command.move_file(
+                        source,
+                        os.path.join(self.working_dir, destination),
+                        self.backup_ending,
+                    ))
+
+                self.assertTrue(os.path.exists(destination_file))
+                self.assertTrue(os.path.exists(backup_file))
+        finally:
+            os.rmdir(os.path.join(self.working_dir, destination))
+
+    def test_move_file_destination_folder_backup_exist(self):
+        source = "test.abc"
+        destination = "./testdir"
+        backup = source + self.backup_ending
+
+        os.mkdir(os.path.join(self.working_dir, destination))
+
+        try:
+            with TestFile(self.working_dir, [
+                (source, True),
+                (os.path.join(destination, source), True),
+                (os.path.join(destination, backup), True),
+            ]) as (source, destination_file, backup_file):
+                self.assertRaises(
+                    FileExistsError, self.loop.run_until_complete,
+                    client.command.move_file(
+                        source,
+                        os.path.join(self.working_dir, destination),
+                        self.backup_ending,
+                    ))
+
+                self.assertTrue(os.path.exists(destination_file))
+                self.assertTrue(os.path.exists(backup_file))
+        finally:
+            os.rmdir(os.path.join(self.working_dir, destination))
+
     def test_move_file_wrong_source_path_object(self):
         self.assertRaises(
             ValueError,
@@ -281,4 +383,201 @@ class FileCommandTests(EventLoopTestCase):
             ValueError,
             self.loop.run_until_complete,
             client.command.move_file("file.txt", "ende", 1),
+        )
+
+    def test_restore_file_no_backup(self):
+        source = "test.abc"
+        destination = "test.abc.link"
+
+        with TestFile(
+                self.working_dir,
+            [
+                (source, self.hash1[1]),
+                (destination, False),
+            ],
+                removing=True,
+        ) as (source, destination):
+            self.loop.run_until_complete(
+                client.command.move_file(
+                    source,
+                    destination,
+                    self.backup_ending,
+                ))
+
+            self.assertTrue(os.path.exists(destination))
+
+            self.loop.run_until_complete(
+                client.command.restore_file(
+                    source,
+                    destination,
+                    self.backup_ending,
+                    self.hash1[0],
+                ))
+
+            self.assertFalse(os.path.exists(destination))
+
+    def test_restore_file_with_backup(self):
+        source = "test.abc"
+        destination = "test.abc.link"
+        backup = destination + self.backup_ending
+
+        with TestFile(
+                self.working_dir,
+            [
+                (source, self.hash1[1]),
+                (destination, False),
+                (backup, self.hash2[1]),
+            ],
+                removing=True,
+        ) as (source, destination, backup):
+            self.loop.run_until_complete(
+                client.command.move_file(
+                    source,
+                    destination,
+                    self.backup_ending,
+                ))
+
+            self.assertTrue(os.path.exists(destination))
+
+            self.loop.run_until_complete(
+                client.command.restore_file(
+                    source,
+                    destination,
+                    self.backup_ending,
+                    self.hash1[0],
+                ))
+
+            self.assertFalse(os.path.exists(backup))
+            self.assertTrue(os.path.exists(destination))
+            self.assertEqual(open(destination, 'r').read(), self.hash2[1])
+
+    def test_restore_file_no_destination_with_backup(self):
+        source = "test.abc"
+        destination = "test.abc.link"
+        backup = destination + self.backup_ending
+
+        with TestFile(
+                self.working_dir,
+            [
+                (source, self.hash1[1]),
+                (destination, False),
+                (backup, self.hash2[1]),
+            ],
+                removing=True,
+        ) as (source, destination, backup):
+            self.assertFalse(os.path.exists(destination))
+
+            self.loop.run_until_complete(
+                client.command.restore_file(
+                    source,
+                    destination,
+                    self.backup_ending,
+                    self.hash1[0],
+                ))
+
+            self.assertFalse(os.path.exists(backup))
+            self.assertTrue(os.path.exists(destination))
+            self.assertEqual(open(destination, 'r').read(), self.hash2[1])
+
+    def test_restore_file_no_destination(self):
+        source = "test.abc"
+        destination = "test.abc.link"
+
+        with TestFile(
+                self.working_dir,
+            [
+                (source, self.hash1[1]),
+                (destination, False),
+            ],
+                removing=True,
+        ) as (source, destination):
+            self.assertFalse(os.path.exists(destination))
+
+            self.loop.run_until_complete(
+                client.command.restore_file(
+                    source,
+                    destination,
+                    self.backup_ending,
+                    self.hash1[0],
+                ))
+
+            self.assertFalse(os.path.exists(destination))
+
+    def test_restore_file_replaced(self):
+        source = "test.abc"
+        destination = "test.abc.link"
+
+        with TestFile(
+                self.working_dir,
+            [
+                (source, self.hash1[1]),
+                (destination, self.hash2[1]),
+            ],
+                removing=True,
+        ) as (source, destination):
+            self.assertTrue(os.path.exists(destination))
+
+            self.assertRaises(
+                ValueError,
+                self.loop.run_until_complete,
+                client.command.restore_file(
+                    source,
+                    destination,
+                    self.backup_ending,
+                    self.hash1[0],
+                ),
+            )
+
+            self.assertTrue(os.path.exists(destination))
+
+    def test_restore_file_modified(self):
+        source = "test.abc"
+        destination = "test.abc.link"
+
+        with TestFile(
+                self.working_dir,
+            [
+                (source, self.hash1[1]),
+                (destination, self.hash1[1]),
+            ],
+                removing=True,
+        ) as (source, destination):
+            self.assertTrue(os.path.exists(destination))
+
+            self.loop.run_until_complete(
+                client.command.restore_file(
+                    source,
+                    destination,
+                    self.backup_ending,
+                    self.hash2[0],
+                ))
+
+            self.assertFalse(os.path.exists(destination))
+
+    def test_restore_file_wrong_source_path_object(self):
+        self.assertRaises(
+            ValueError,
+            self.loop.run_until_complete,
+            client.command.restore_file(1, "file.txt", "ende", "hash"),
+        )
+
+    def test_restore_file_wrong_destination_path_object(self):
+        self.assertRaises(
+            ValueError,
+            self.loop.run_until_complete,
+            client.command.restore_file("file.txt", 1, "ende", "hash"),
+        )
+
+    def test_restore_file_wrong_ending_object(self):
+        self.assertRaises(
+            ValueError,
+            self.loop.run_until_complete,
+            client.command.restore_file("file.txt", "ende", 1, "hash"),
+        )
+
+    def test_restore_file_wrong_hash_object(self):
+        self.assertRaises(
+            ValueError,
+            self.loop.run_until_complete,
+            client.command.restore_file("file.txt", "ende", "ende", 1),
         )
