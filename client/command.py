@@ -121,18 +121,25 @@ def execute(own_uuid, path, arguments):
             pure_path.parts[-1], own_uuid)),
         mode='wb')
 
-    startupinfo = subprocess.STARTUPINFO()
-    startupinfo.dwFlags = subprocess.STARTF_USESTDHANDLES | subprocess.STARTF_USESHOWWINDOW
-    startupinfo.wShowWindow = 6
-
     try:
-        process = yield from asyncio.create_subprocess_exec(
-            *([path] + arguments),
-            cwd=str(PurePath(path).parent),
-            creationflags=subprocess.CREATE_NEW_CONSOLE,
-            startupinfo=startupinfo,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT)
+        if platform.system() == 'Windows':
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags = subprocess.STARTF_USESHOWWINDOW
+            startupinfo.wShowWindow = 6
+            
+            process = yield from asyncio.create_subprocess_exec(
+                *([path] + arguments),
+                cwd=str(PurePath(path).parent),
+                creationflags=subprocess.CREATE_NEW_CONSOLE,
+                startupinfo=startupinfo,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT)
+        else:
+            process = yield from asyncio.create_subprocess_exec(
+                *([path] + arguments),
+                cwd=str(PurePath(path).parent),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT)
 
         while not process.stdout.at_eof():
             line = yield from process.stdout.readline()
