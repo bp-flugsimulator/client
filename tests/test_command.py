@@ -36,7 +36,7 @@ class EventLoopTestCase(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        super(TestCommands, cls).tearDownClass()
+        super(EventLoopTestCase, cls).tearDownClass()
         cls.loop.close()
         LOGGER.disable()
 
@@ -180,9 +180,83 @@ class TestCommands(EventLoopTestCase):
 
         self.assertEqual(0,
                          self.loop.run_until_complete(
-                             client.command.execute(prog, [])))
+                             client.command.execute(uuid4().hex,prog, [])))
         self.assertTrue(isfile(join(path, 'test.txt')))
         remove(join(path, 'test.txt'))
+
+    def test_cancel_execution(self):
+        if os.name == 'nt':
+            prog = "C:\\Windows\\System32\\cmd.exe"
+            args = ["/c", "notepad.exe"]
+            return_code = 1
+        else:
+            prog = "/bin/sh"
+            args = ["-c", "sleep 10"]
+            return_code = -15
+
+        @asyncio.coroutine
+        def create_and_cancel_task():
+            task = self.loop.create_task(
+                client.command.execute(uuid4().hex, prog, args))
+            yield from asyncio.sleep(0.1)
+            task.cancel()
+            print("canceled task")
+            result = yield from task
+            return result
+
+        res = self.loop.run_until_complete(create_and_cancel_task())
+        self.assertEqual(return_code, res)
+
+    def test_get_log(self):
+        path = join(getcwd(), 'applications')
+        if os.name == 'nt':
+            prog = join(path, 'echo.bat')
+            args = []
+        else:
+            prog = 'echo'
+            args = ['1234']
+
+        uuid = uuid4().hex
+        self.assertEqual(0,
+                         self.loop.run_until_complete(
+                             client.command.execute(uuid, prog, args)))
+
+        res = self.loop.run_until_complete(client.command.get_log(uuid))
+        if os.name == 'nt':
+            self.assertIn(
+                'echo 1234  1>test.txt \r\nFinished with code 0.\r\n',
+                res['log'],
+            )
+            self.assertEqual(
+                uuid,
+                res['uuid'],
+            )
+            remove(join(path, 'test.txt'))
+        else:
+            self.assertEqual(
+                {
+                    'log': '1234\nFinished with code 0.\n',
+                    'uuid': uuid,
+                },
+                res,
+            )
+        self.assertEqual(0,
+                         self.loop.run_until_complete(
+                             client.command.execute(uuid4().hex, prog, [])))
+        self.assertTrue(isfile(join(path, 'test.txt')))
+        remove(join(path, 'test.txt'))
+
+
+
+    def test_get_log_unknown_uuid(self):
+        self.assertRaises(FileNotFoundError, self.loop.run_until_complete,
+                          client.command.get_log('abcdefg'))
+
+    def test_powershell(self):
+        if os.name is 'nt':
+            self.loop.run_until_complete(client.command.execute(uuid4().hex,'powershell', ['echo', '1234']))
+
+
 
 
 class FileCommandTests(EventLoopTestCase):
@@ -573,76 +647,6 @@ class FileCommandTests(EventLoopTestCase):
             self.loop.run_until_complete,
             client.command.restore_file("file.txt", 1, "ende", "hash"),
         )
-
-
-    def test_cancel_execution(self):
-        if os.name == 'nt':
-            prog = "C:\\Windows\\System32\\cmd.exe"
-            args = ["/c", "notepad.exe"]
-            return_code = 1
-        else:
-            prog = "/bin/sh"
-            args = ["-c", "sleep 10"]
-            return_code = -15
-
-        @asyncio.coroutine
-        def create_and_cancel_task():
-            task = self.loop.create_task(
-                client.command.execute(uuid4().hex, prog, args))
-            yield from asyncio.sleep(0.1)
-            task.cancel()
-            result = yield from task
-            return result
-
-        res = self.loop.run_until_complete(create_and_cancel_task())
-        self.assertEqual(return_code, res)
-        self.assertEqual(0,
-                         self.loop.run_until_complete(
-                             client.command.execute(uuid4().hex, prog, [])))
-        self.assertTrue(isfile(join(path, 'test.txt')))
-        remove(join(path, 'test.txt'))
-
-    def test_get_log(self):
-        path = join(getcwd(), 'applications')
-        if os.name == 'nt':
-            prog = join(path, 'echo.bat')
-            args = []
-        else:
-            prog = 'echo'
-            args = ['1234']
-
-        uuid = uuid4().hex
-        self.assertEqual(0,
-                         self.loop.run_until_complete(
-                             client.command.execute(uuid, prog, args)))
-
-        res = self.loop.run_until_complete(client.command.get_log(uuid))
-        if os.name == 'nt':
-            self.assertIn(
-                'echo 1234  1>test.txt \r\nFinished with code 0.\r\n',
-                res['log'],
-            )
-            self.assertEqual(
-                uuid,
-                res['uuid'],
-            )
-            remove(join(path, 'test.txt'))
-        else:
-            self.assertEqual(
-                {
-                    'log': '1234\nFinished with code 0.\n',
-                    'uuid': uuid,
-                },
-                res,
-            )
-
-    def test_get_log_unknown_uuid(self):
-        self.assertRaises(FileNotFoundError, self.loop.run_until_complete,
-                          client.command.get_log('abcdefg'))
-
-    def test_powershell(self):
-        if os.name is 'nt':
-            self.loop.run_until_complete(client.command.execute(uuid4().hex,'powershell', ['echo', '1234']))
 
     def test_restore_file_wrong_ending_object(self):
         self.assertRaises(
