@@ -282,5 +282,5 @@ class TestCommands(unittest.TestCase):
                           client.command.get_log('abcdefg'))
 
     def test_powershell(self):
-        if os.name = 'nt':
+        if os.name is 'nt':
             self.loop.run_until_complete(client.command.execute(uuid4().hex,'powershell', ['echo', '1234']))
