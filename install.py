@@ -164,6 +164,7 @@ if __name__ == "__main__":
         else:
             stderr.write(architecture()[0] +
                          ' is not officially supported but may work\n')
+            REQUIREMENTS_FILE = 'linux_requirements.txt'
     else:
         stderr.write(system() + ' is not officially supported but may work\n')
 

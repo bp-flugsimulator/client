@@ -280,3 +280,7 @@ class TestCommands(unittest.TestCase):
     def test_get_log_unknown_uuid(self):
         self.assertRaises(FileNotFoundError, self.loop.run_until_complete,
                           client.command.get_log('abcdefg'))
+
+    def test_powershell(self):
+        if os.name = 'nt':
+            self.loop.run_until_complete(client.command.execute(uuid4().hex,'powershell', ['echo', '1234']))

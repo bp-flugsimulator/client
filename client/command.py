@@ -63,10 +63,23 @@ def execute(own_uuid, path, arguments):
             pure_path.parts[-1], own_uuid)),
         mode='wb')
 
+    startupinfo = subprocess.STARTUPINFO()
+    startupinfo.dwFlags = subprocess.STARTF_USESTDHANDLES | subprocess.STARTF_USESHOWWINDOW
+    startupinfo.wShowWindow = 6
+
     try:
+
+        command = path
+        for arg in arguments:
+            command += ' ' + arg  
+        command += ' >' + os.path.join(LOGGER.logdir, '{}-{}.log'.format(pure_path.parts[-1], own_uuid))
+        command += ' >CON'
+
         process = yield from asyncio.create_subprocess_exec(
             *([path] + arguments),
             cwd=str(PurePath(path).parent),
+            creationflags=subprocess.CREATE_NEW_CONSOLE,
+            startupinfo=startupinfo,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT)
 
