@@ -12,6 +12,64 @@ import hashlib
 from pathlib import PurePath
 
 from utils import Rpc
+import utils.rpc
+
+
+class Helper:
+    """
+    Stores all functions which are helper functions.
+    """
+    methods = []
+    function = utils.rpc.method_wrapper(methods)
+
+    @staticmethod
+    def get(fun):
+        """
+        Searches for a function with a given name.
+
+        Arguments
+        ---------
+            fun: str, function name
+
+        Returns
+        -------
+            Function Handle or None
+        """
+        for f in Helper.methods:
+            if f.__name__ == fun:
+                return f
+
+        return None
+
+
+@Helper.function
+def hash_file(path):
+    """
+    Generates a hash string from a given file.
+
+    Parameters
+    ----------
+        path: str
+            A path to a file.
+
+    Returns
+    -------
+        A str which contains the hash in hex encoding
+
+    Exceptions
+    ----------
+        ValueError: if the path does not point to a file
+    """
+    md5 = hashlib.md5()
+
+    with open(path, 'rb') as file_:
+        while True:
+            data = file_.read(65536)
+            if not data:
+                break
+            md5.update(data)
+
+    return "{}".format(md5.hexdigest())
 
 from .logger import LOGGER
 
@@ -169,9 +227,9 @@ def move_file(source_path, destination_path, backup_ending):
     """
 
     if not isinstance(source_path, str):
-        raise ValueError("source Path is not a string!")
+        raise ValueError("source path is not a string!")
     if not isinstance(destination_path, str):
-        raise ValueError("destination Path is not a string!")
+        raise ValueError("destination path is not a string!")
     if not isinstance(backup_ending, str):
         raise ValueError("Backup file ending is not a string!")
     else:
@@ -180,86 +238,45 @@ def move_file(source_path, destination_path, backup_ending):
         # File ending of backup files
         backup_file_ending = backup_ending
 
+        if not os.path.exists(source_path):
+            raise FileNotFoundError(
+                errno.ENOENT,
+                os.strerror(errno.ENOENT),
+                source_path,
+            )
+
         # source is file
         if os.path.isfile(source_path):
             source_file = os.path.basename(source_path)
-            # destination is folder
+
             if os.path.isdir(destination_path):
+                # destination is folder
                 destination_path = os.path.join(destination_path, source_file)
-            backup_file_name = destination_path + backup_file_ending
+
             # destination file with name of source exists
-            if os.path.islink(destination_path):
-                os.remove(destination_path)
-            elif os.path.isfile(destination_path):
+            if os.path.isfile(destination_path):
                 # Backup file name already exists
+                backup_file_name = destination_path + backup_file_ending
+
                 if os.path.exists(backup_file_name):
                     raise FileExistsError(
                         errno.EEXIST,
                         os.strerror(errno.EEXIST),
                         backup_file_name,
                     )
-                os.rename(destination_path, backup_file_name)
-            # finally (rename and) link source to destination
-            md5 = hashlib.md5()
-            BUF_SIZE = 65536
+                else:
+                    print("Moved to BACKUP")
+                    # move old file to backup
+                    os.rename(destination_path, backup_file_name)
 
+            # finally link source to destination
             os.link(source_path, destination_path)
-            with open(destination_path, 'rb') as file_:
-                while True:
-                    data = file_.read(BUF_SIZE)
-                    if not data:
-                        break
-                    md5.update(data)
-            return "{0}".format(md5.hexdigest())
 
-        # # source is folder (NOT POSSIBLE ANYMORE)
-        # elif os.path.isdir(source_path):
-        #     dst_dir = os.path.join(
-        #         destination_path,
-        #         os.path.basename(source_path),
-        #     )
-        #     # destination cant be a file if source is folder
-        #     if os.path.isfile(destination_path):
-        #         raise NotADirectoryError(
-        #             errno.ENOTDIR,
-        #             os.strerror(errno.ENOTDIR),
-        #             destination_path,
-        #         )
-        #     if os.path.isdir(dst_dir):
-        #         # Backup file name already exits
-        #         if os.path.exists(dst_dir + backup_file_ending):
-        #             raise FileExistsError(
-        #                 errno.EEXIST,
-        #                 os.strerror(errno.EEXIST),
-        #                 dst_dir + backup_file_ending,
-        #             )
-        #         os.rename(
-        #             dst_dir,
-        #             dst_dir + backup_file_ending,
-        #         )
-        #     for src_dir, _, files in os.walk(source_path):
-        #         dest_src = os.path.join(
-        #             os.path.basename(destination_path),
-        #             os.path.basename(source_path),
-        #         )
-        #         dst_dir = src_dir.replace(
-        #             os.path.basename(source_path),
-        #             dest_src,
-        #         )
-        #         # If source folder does not exist in destination create it.
-        #         if not os.path.exists(dst_dir):
-        #             os.makedirs(dst_dir)
-        #         for file_ in files:
-        #             src_file = os.path.join(src_dir, file_)
-        #             dst_file = os.path.join(dst_dir, file_)
-        #             # link source to destination
-        #             os.link(src_file, dst_file)
+            return hash_file(destination_path)
         else:
-            raise FileNotFoundError(
-                errno.ENOENT,
-                os.strerror(errno.ENOENT),
-                source_path,
-            )
+            raise ValueError(
+                "Moving a directory is not supported. ({})".format(
+                    source_path))
 
 
 @Rpc.method
@@ -296,41 +313,35 @@ def restore_file(source_path, destination_path, backup_ending, hash_value):
         source_path = os.path.abspath(source_path)
         destination_path = os.path.abspath(destination_path)
 
-        link_path = os.path.join(
-            os.path.dirname(destination_path),
-            os.path.basename(source_path),
-        )
         backup_path = destination_path + backup_ending
 
-        print(backup_path)
+        if not os.path.exists(destination_path):
+            if os.path.exists(backup_path):
+                os.rename(backup_path, destination_path)
 
-        md5 = hashlib.md5()
-        BUF_SIZE = 65536
+            return None
 
-        with open(destination_path, 'rb') as file_:
-            while True:
-                data = file_.read(BUF_SIZE)
-                if not data:
-                    break
-                md5.update(data)
-        hash_gen = "{0}".format(md5.hexdigest())
+        hash_gen = hash_file(destination_path)
+
+        if hash_value != hash_gen:
+            # TODO: verify
+
+            # if the hash values do not match then
+            # check if the source file was changed
+            # if the source file was changed but
+            # the files are still linked then proceed.
+            hash_value = hash_file(source_path)
 
         if hash_value == hash_gen:
+            os.remove(destination_path)
             if os.path.exists(backup_path):
-                os.remove(destination_path)
                 os.rename(backup_path, destination_path)
-            else:
-                raise FileNotFoundError(
-                    errno.ENOENT,
-                    os.strerror(errno.ENOENT),
-                    backup_path,
-                )
         else:
-            raise FileNotFoundError(
-                errno.ENOENT,
-                os.strerror(errno.ENOENT),
-                destination_path,
-            )
+            raise ValueError(
+                "The file {} was changed while it was replaced. Remove it yourself.".
+                format(destination_path))
+
+        return None
 
 
 @Rpc.method
