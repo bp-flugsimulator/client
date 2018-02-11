@@ -152,25 +152,6 @@ class TestCommands(EventLoopTestCase):
         result = self.loop.run_until_complete(client.command.online())
         self.assertIsNone(result)
 
-    def test_cancel_execution(self):
-        if os.name == 'nt':
-            prog = "C:\\Windows\\System32\\cmd.exe"
-            args = ["/c", "notepad.exe"]
-        else:
-            prog = "/bin/sh"
-            args = ["-c", "sleep 10"]
-
-        @asyncio.coroutine
-        def create_and_cancel_task():
-            task = self.loop.create_task(client.command.execute(prog, args))
-            yield from asyncio.sleep(0.1)
-            task.cancel()
-            result = yield from task
-            return result
-
-        res = self.loop.run_until_complete(create_and_cancel_task())
-        self.assertTrue('Process got canceled and returned' in res)
-
     def test_execution_directory(self):
         path = join(getcwd(), 'applications')
         if os.name == 'nt':
@@ -246,17 +227,9 @@ class TestCommands(EventLoopTestCase):
         self.assertTrue(isfile(join(path, 'test.txt')))
         remove(join(path, 'test.txt'))
 
-
-
     def test_get_log_unknown_uuid(self):
         self.assertRaises(FileNotFoundError, self.loop.run_until_complete,
                           client.command.get_log('abcdefg'))
-
-    def test_powershell(self):
-        if os.name is 'nt':
-            self.loop.run_until_complete(client.command.execute(uuid4().hex,'powershell', ['echo', '1234']))
-
-
 
 
 class FileCommandTests(EventLoopTestCase):
