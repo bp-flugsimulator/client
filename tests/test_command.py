@@ -127,13 +127,6 @@ class TestCommands(EventLoopTestCase):
             client.command.execute(uuid4().hex, "calcs.exe", [1, 2, 34]),
         )
 
-    def test_execution_not_existing_prog(self):
-        self.assertRaises(
-            FileNotFoundError,
-            self.loop.run_until_complete,
-            client.command.execute(uuid4().hex, "calcs.exe", []),
-        )
-
     def test_execution_echo_shell(self):
         if os.name == 'nt':
             prog = "C:\\Windows\\System32\\cmd.exe"
@@ -143,7 +136,7 @@ class TestCommands(EventLoopTestCase):
             args = ["-c", "echo $(date)"]
 
         self.assertEqual(
-            0,
+            '0',
             self.loop.run_until_complete(
                 client.command.execute(uuid4().hex, prog, args)),
         )
@@ -159,7 +152,7 @@ class TestCommands(EventLoopTestCase):
         else:
             prog = join(path, 'echo.sh')
 
-        self.assertEqual(0,
+        self.assertEqual('0',
                          self.loop.run_until_complete(
                              client.command.execute(uuid4().hex,prog, [])))
         self.assertTrue(isfile(join(path, 'test.txt')))
@@ -169,7 +162,7 @@ class TestCommands(EventLoopTestCase):
         if os.name == 'nt':
             prog = "C:\\Windows\\System32\\cmd.exe"
             args = ["/c", "notepad.exe"]
-            return_code = 1
+            return_code = '15'
         else:
             prog = "/bin/sh"
             args = ["-c", "sleep 10"]
@@ -179,7 +172,7 @@ class TestCommands(EventLoopTestCase):
         def create_and_cancel_task():
             task = self.loop.create_task(
                 client.command.execute(uuid4().hex, prog, args))
-            yield from asyncio.sleep(0.1)
+            yield from asyncio.sleep(0.5)
             task.cancel()
             print("canceled task")
             result = yield from task
@@ -189,30 +182,21 @@ class TestCommands(EventLoopTestCase):
         self.assertEqual(return_code, res)
 
     def test_get_log(self):
-        path = join(getcwd(), 'applications')
-        if os.name == 'nt':
-            prog = join(path, 'echo.bat')
-            args = []
-        else:
-            prog = 'echo'
-            args = ['1234']
-
         uuid = uuid4().hex
-        self.assertEqual(0,
+        self.assertEqual('0',
                          self.loop.run_until_complete(
-                             client.command.execute(uuid, prog, args)))
+                             client.command.execute(uuid, 'echo', ['1234'])))
 
         res = self.loop.run_until_complete(client.command.get_log(uuid))
         if os.name == 'nt':
             self.assertIn(
-                'echo 1234  1>test.txt \r\nFinished with code 0.\r\n',
+                'echo 1234 \r\n1234\r\n',
                 res['log'],
             )
             self.assertEqual(
                 uuid,
                 res['uuid'],
             )
-            remove(join(path, 'test.txt'))
         else:
             self.assertEqual(
                 {
@@ -221,11 +205,6 @@ class TestCommands(EventLoopTestCase):
                 },
                 res,
             )
-        self.assertEqual(0,
-                         self.loop.run_until_complete(
-                             client.command.execute(uuid4().hex, prog, [])))
-        self.assertTrue(isfile(join(path, 'test.txt')))
-        remove(join(path, 'test.txt'))
 
     def test_get_log_unknown_uuid(self):
         self.assertRaises(FileNotFoundError, self.loop.run_until_complete,

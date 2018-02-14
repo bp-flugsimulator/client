@@ -4,6 +4,7 @@ This module contains all available rpc commands.
 
 import asyncio
 import os
+import sys
 import platform
 import subprocess
 import errno
@@ -71,6 +72,7 @@ def hash_file(path):
 
     return "{}".format(md5.hexdigest())
 
+
 from .logger import LOGGER
 
 
@@ -115,59 +117,85 @@ def execute(own_uuid, path, arguments):
             if not isinstance(arg, str):
                 raise ValueError("Element in arguments is not a string.")
 
-    pure_path = PurePath(path)
-    log_file = open(
-        file=os.path.join(LOGGER.logdir, '{}-{}.log'.format(
-            pure_path.parts[-1], own_uuid)),
-        mode='wb')
+    args = ''
+    for arg in arguments:
+        print(arg)
+        args += ' ' + str(arg)
+
+    misc_file_path = os.path.join(LOGGER.logdir, '{}-{}'.format(
+        PurePath(path).parts[-1], own_uuid))
+
+    with open(misc_file_path + '.bat', mode='w') as execute_file:
+        execute_file.write('call ' + path)
+        for arg in arguments:
+            execute_file.write(' ' + arg)
+        execute_file.write('{}@echo off'.format(os.linesep))
+        execute_file.write('{}echo %errorlevel% > {}.exit'.format(os.linesep,misc_file_path)) 
+
+    command = """/c call {misc_file_path}.bat 2>&1 | {python} {tee} --path {misc_file_path}.log""".format(
+        python=sys.executable,
+        tee=os.path.join(os.getcwd(), 'applications', 'tee.py'),
+        misc_file_path=misc_file_path)
+
+    print(command)
 
     try:
         if platform.system() == 'Windows':
+            import psutil
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags = subprocess.STARTF_USESHOWWINDOW
             startupinfo.wShowWindow = 6
-            
+
             process = yield from asyncio.create_subprocess_exec(
-                *([path] + arguments),
+                'cmd.exe',
+                command,
                 cwd=str(PurePath(path).parent),
                 creationflags=subprocess.CREATE_NEW_CONSOLE,
-                startupinfo=startupinfo,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT)
+                startupinfo=startupinfo)
+            yield from process.wait()
+
+            os.remove(misc_file_path + '.bat')
+            with open(misc_file_path + '.exit') as log_file:
+                return log_file.readlines()[0].rstrip()
+
         else:
             process = yield from asyncio.create_subprocess_exec(
-                *([path] + arguments),
-                cwd=str(PurePath(path).parent),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT)
+                path, args, cwd=str(PurePath(path).parent))
 
-        while not process.stdout.at_eof():
-            line = yield from process.stdout.readline()
-            log_file.write(line)
-            log_file.flush()
+            yield from process.wait()
+            return process.returncode
 
     except asyncio.CancelledError:
         if platform.system() == "Windows":
             import psutil
-            parent = psutil.Process(process.pid)
+            parent = psutil.Process(
+                process.pid).children(recursive=True)[3]  # TODO explain
             for child in parent.children(recursive=True):
                 child.terminate()
+            parent.terminate()
+            yield from process.wait()
 
-        process.terminate()
-        log_file.write(
-            ('Process got terminated.{}'.format(os.linesep)).encode('utf_8'))
+            os.remove(misc_file_path + '.bat')
+            with open(misc_file_path + '.exit') as log_file:
+                return log_file.readlines()[0].rstrip()
+        else:
+            process.terminate()
+            yield from process.wait()
+            return process.returncode
+
+        #log_file.write(
+        #    ('Process got terminated.{}'.format(os.linesep)).encode('utf_8'))
 
     except Exception as err:
-        log_file.write(('Exception occured during the execution:{}{}'.format(
-            os.linesep, str(err))).encode('utf_8'))
-        log_file.close()
+        #log_file.write(('Exception occured during the execution:{}{}'.format(
+        #    os.linesep, str(err))).encode('utf_8'))
+        #log_file.close()
         raise err
 
-    yield from process.wait()
-    log_file.write(('Finished with code {}.{}'.format(
-        process.returncode, os.linesep)).encode('utf_8'))
-    log_file.close()
-    return process.returncode
+        #log_file.write(('Finished with code {}.{}'.format(
+    #    process.returncode, os.linesep)).encode('utf_8'))
+    #log_file.close()
+    #return process.returncode
 
 
 @Rpc.method
@@ -175,7 +203,7 @@ def execute(own_uuid, path, arguments):
 def get_log(target_uuid):
     file_name = None
     for entry in os.listdir(LOGGER.logdir):
-        if target_uuid in entry:
+        if target_uuid in entry and '.log' in entry:
             file_name = entry
             break
 
