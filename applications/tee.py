@@ -1,6 +1,5 @@
 from argparse import ArgumentParser
 from sys import stdin, stdout
-from os import linesep
 
 parser = ArgumentParser()
 parser.add_argument('--path', type=str, help='path to logfile')

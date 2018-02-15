@@ -4,7 +4,6 @@ This module contains all available rpc commands.
 
 import asyncio
 import os
-import signal
 import sys
 import platform
 import subprocess
@@ -126,8 +125,8 @@ def execute(own_uuid, path, arguments):
     try:
         if platform.system() == 'Windows':
             with open(misc_file_path + '.bat', mode='w') as execute_file:
-                execute_file.write('call ' + path + ' ' +
-                                   reduce(lambda r, l: r + ' ' + l, arguments, ''))
+                execute_file.write('call ' + path + ' ' + reduce(
+                    lambda r, l: r + ' ' + l, arguments, ''))
                 execute_file.write('{}@echo off'.format(os.linesep))
                 execute_file.write('{}echo %errorlevel% > {}.exit'.format(
                     os.linesep, misc_file_path))
@@ -163,8 +162,8 @@ def execute(own_uuid, path, arguments):
             with open(misc_file_path + '.sh', mode='w') as execute_file:
                 execute_file.write('#!/bin/bash' + os.linesep)
                 execute_file.write(command + os.linesep)
-                execute_file.write('echo ${PIPESTATUS[0]} > ' + misc_file_path +
-                                   '.exit' + os.linesep)
+                execute_file.write('echo ${PIPESTATUS[0]} > ' +
+                                   misc_file_path + '.exit' + os.linesep)
 
             mode = os.stat(misc_file_path + '.sh').st_mode
             mode |= (mode & 0o444) >> 2  # copy R bits to X
@@ -187,7 +186,9 @@ def execute(own_uuid, path, arguments):
             yield from process.wait()
 
         else:
-            children = psutil.Process(process.pid).children(recursive=True)  # TODO explain
+            children = psutil.Process(
+                process.pid).children(recursive=True).sort(
+                    key=lambda p: p['pid'])  # TODO explain
             for child in children:
                 print(child)
             children[0].terminate()  # TODO returns 143

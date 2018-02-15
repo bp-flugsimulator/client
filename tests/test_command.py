@@ -77,7 +77,7 @@ class TestFile:
 
         errors = []
 
-        for (path, created) in self.paths:
+        for path, _ in self.paths:
             path = os.path.join(self.base, path)
 
             if not os.path.exists(path):
