@@ -164,7 +164,7 @@ class TestCommands(EventLoopTestCase):
             args = ["/c", "notepad.exe"]
             return_code = '15'
         else:
-            prog = "/bin/sh"
+            prog = "/bin/bash"
             args = ['-c', '"sleep 100"']
             return_code = '143'  # TODO why not -15 ???
 
