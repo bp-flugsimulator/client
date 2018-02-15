@@ -194,13 +194,13 @@ class TestCommands(EventLoopTestCase):
                 'echo  ' + message + ' \r\n ' + message + '\r\n',
                 res['log'],
             )
-            
+
         else:
             self.assertIn(
                 message + '\n',
                 res['log'],
             )
-      
+
         self.assertEqual(
             uuid,
             res['uuid'],
