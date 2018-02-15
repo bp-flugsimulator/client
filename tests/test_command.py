@@ -165,7 +165,7 @@ class TestCommands(EventLoopTestCase):
             return_code = '15'
         else:
             prog = "/bin/sh"
-            args = ['-c', '"sleep 10"']
+            args = ['-c', '"sleep 100"']
             return_code = '143'  # TODO why not -15 ???
 
         @asyncio.coroutine
