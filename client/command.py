@@ -11,7 +11,7 @@ import hashlib
 
 from pathlib import PurePath
 
-from utils import Rpc
+from utils import Rpc, Command, Status
 import utils.rpc
 
 
@@ -130,6 +130,69 @@ def execute(path, arguments):
         yield from process.wait()
         return 'Process got canceled and returned {}.'.format(
             process.returncode)
+
+
+@Rpc.method
+@asyncio.coroutine
+def chain_execution(commands):
+    """
+    Executes given commands sequential. If one commands fails all other commands fail
+    too.
+    """
+    result = []
+    error = False
+
+    for command in commands:
+        try:
+            cmd = Command(
+                command["method"],
+                uuid=command["uuid"],
+                **command["arguments"],
+            )
+        except Exception as err:
+            print(err)
+            continue
+
+        if error:
+            ret = Status(
+                Status.ID_ERR,
+                {
+                    'method':
+                    cmd.method,
+                    'result':
+                    "Could not execute because earlier command was not successful."
+                },
+                cmd.uuid,
+            )
+
+            result.append(dict(ret))
+        else:
+
+            try:
+                fun = Rpc.get(cmd.method)
+                print(dict(cmd))
+                ret = yield from asyncio.coroutine(fun)(**cmd.arguments)
+
+                ret = Status(
+                    Status.ID_OK,
+                    {'method': cmd.method,
+                     'result': ret},
+                    cmd.uuid,
+                )
+
+                result.append(dict(ret))
+            except Exception as err:
+                ret = Status(
+                    Status.ID_ERR,
+                    {'method': cmd.method,
+                     'result': str(err)},
+                    cmd.uuid,
+                )
+
+                result.append(dict(ret))
+                error = True
+
+    return result
 
 
 @Rpc.method
@@ -264,8 +327,6 @@ def restore_file(source_path, destination_path, backup_ending, hash_value):
         hash_gen = hash_file(destination_path)
 
         if hash_value != hash_gen:
-            # TODO: verify
-
             # if the hash values do not match then
             # check if the source file was changed
             # if the source file was changed but
