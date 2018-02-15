@@ -130,7 +130,7 @@ def execute(own_uuid, path, arguments):
                                    reduce(lambda r, l: r + ' ' + l, arguments, ''))
                 execute_file.write('{}@echo off'.format(os.linesep))
                 execute_file.write('{}echo %errorlevel% > {}.exit'.format(
-                    s.linesep, misc_file_path))
+                    os.linesep, misc_file_path))
 
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags = subprocess.STARTF_USESHOWWINDOW
@@ -178,7 +178,7 @@ def execute(own_uuid, path, arguments):
         yield from process.wait()
 
     except asyncio.CancelledError:
-        if platform.system() == "Windows":
+        if platform.system() == 'Windows':
             parent = psutil.Process(
                 process.pid).children(recursive=True)[3]  # TODO explain
             for child in parent.children(recursive=True):
@@ -193,7 +193,7 @@ def execute(own_uuid, path, arguments):
             children[0].terminate()  # TODO returns 143
             yield from process.wait()
 
-    if platform.system == 'Windows':
+    if platform.system() == 'Windows':
         os.remove(misc_file_path + '.bat')
     else:
         os.remove(misc_file_path + '.sh')

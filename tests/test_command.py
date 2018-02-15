@@ -183,28 +183,28 @@ class TestCommands(EventLoopTestCase):
 
     def test_get_log(self):
         uuid = uuid4().hex
+        message = ''.join([random.choice(string.ascii_letters + string.digits) for n in range(32)])
         self.assertEqual('0',
                          self.loop.run_until_complete(
-                             client.command.execute(uuid, 'echo', ['1234'])))
+                             client.command.execute(uuid, 'echo', [message])))
 
         res = self.loop.run_until_complete(client.command.get_log(uuid))
         if os.name == 'nt':
             self.assertIn(
-                'echo 1234 \r\n1234\r\n',
+                'echo  ' + message + ' \r\n ' + message + '\r\n',
                 res['log'],
             )
-            self.assertEqual(
-                uuid,
-                res['uuid'],
-            )
+            
         else:
-            self.assertEqual(
-                {
-                    'log': '1234\n',
-                    'uuid': uuid,
-                },
-                res,
+            self.assertIn(
+                message + '\n',
+                res['log'],
             )
+      
+        self.assertEqual(
+            uuid,
+            res['uuid'],
+        )
 
     def test_get_log_unknown_uuid(self):
         self.assertRaises(FileNotFoundError, self.loop.run_until_complete,
