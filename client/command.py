@@ -150,7 +150,7 @@ def execute(own_uuid, path, arguments):
                 creationflags=subprocess.CREATE_NEW_CONSOLE,
                 startupinfo=startupinfo)
         else:
-            command = """({path} {args}) |& {python} {tee} --path {misc_file_path}.log""".format(
+            command = """({path} {args}) 2>&1 | {python} {tee} --path {misc_file_path}.log""".format(
                 path=path,
                 args=reduce(lambda r, l: r + ' ' + l, arguments, ''),
                 python=sys.executable,
@@ -161,7 +161,7 @@ def execute(own_uuid, path, arguments):
             print(command)
 
             with open(misc_file_path + '.sh', mode='w') as execute_file:
-                execute_file.write('#!/bin/sh' + os.linesep)
+                execute_file.write('#!/bin/bash' + os.linesep)
                 execute_file.write(command + os.linesep)
                 execute_file.write('echo ${PIPESTATUS[0]} > ' + misc_file_path +
                                    '.exit' + os.linesep)
