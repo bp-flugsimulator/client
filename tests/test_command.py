@@ -165,8 +165,8 @@ class TestCommands(EventLoopTestCase):
             return_code = '15'
         else:
             prog = "/bin/sh"
-            args = ["-c", "sleep 10"]
-            return_code = -15
+            args = ['-c', '"sleep 10"']
+            return_code = '143'  # TODO why not -15 ???
 
         @asyncio.coroutine
         def create_and_cancel_task():
@@ -200,7 +200,7 @@ class TestCommands(EventLoopTestCase):
         else:
             self.assertEqual(
                 {
-                    'log': '1234\nFinished with code 0.\n',
+                    'log': '1234\n',
                     'uuid': uuid,
                 },
                 res,

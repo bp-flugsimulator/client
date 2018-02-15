@@ -4,13 +4,16 @@ This module contains all available rpc commands.
 
 import asyncio
 import os
+import signal
 import sys
 import platform
 import subprocess
 import errno
 import hashlib
+import psutil
 
 from pathlib import PurePath
+from functools import reduce
 
 from utils import Rpc
 import utils.rpc
@@ -117,34 +120,28 @@ def execute(own_uuid, path, arguments):
             if not isinstance(arg, str):
                 raise ValueError("Element in arguments is not a string.")
 
-    args = ''
-    for arg in arguments:
-        print(arg)
-        args += ' ' + str(arg)
-
     misc_file_path = os.path.join(LOGGER.logdir, '{}-{}'.format(
         PurePath(path).parts[-1], own_uuid))
 
-    with open(misc_file_path + '.bat', mode='w') as execute_file:
-        execute_file.write('call ' + path)
-        for arg in arguments:
-            execute_file.write(' ' + arg)
-        execute_file.write('{}@echo off'.format(os.linesep))
-        execute_file.write('{}echo %errorlevel% > {}.exit'.format(os.linesep,misc_file_path)) 
-
-    command = """/c call {misc_file_path}.bat 2>&1 | {python} {tee} --path {misc_file_path}.log""".format(
-        python=sys.executable,
-        tee=os.path.join(os.getcwd(), 'applications', 'tee.py'),
-        misc_file_path=misc_file_path)
-
-    print(command)
-
     try:
         if platform.system() == 'Windows':
-            import psutil
+            with open(misc_file_path + '.bat', mode='w') as execute_file:
+                execute_file.write('call ' + path + ' ' +
+                                   reduce(lambda r, l: r + ' ' + l, arguments, ''))
+                execute_file.write('{}@echo off'.format(os.linesep))
+                execute_file.write('{}echo %errorlevel% > {}.exit'.format(
+                    s.linesep, misc_file_path))
+
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags = subprocess.STARTF_USESHOWWINDOW
             startupinfo.wShowWindow = 6
+
+            command = """/c call {misc_file_path}.bat 2>&1 | {python} {tee} --path {misc_file_path}.log""".format(
+                python=sys.executable,
+                tee=os.path.join(os.getcwd(), 'applications', 'tee.py'),
+                misc_file_path=misc_file_path)
+
+            print(command)
 
             process = yield from asyncio.create_subprocess_exec(
                 'cmd.exe',
@@ -152,22 +149,36 @@ def execute(own_uuid, path, arguments):
                 cwd=str(PurePath(path).parent),
                 creationflags=subprocess.CREATE_NEW_CONSOLE,
                 startupinfo=startupinfo)
-            yield from process.wait()
-
-            os.remove(misc_file_path + '.bat')
-            with open(misc_file_path + '.exit') as log_file:
-                return log_file.readlines()[0].rstrip()
-
         else:
-            process = yield from asyncio.create_subprocess_exec(
-                path, args, cwd=str(PurePath(path).parent))
+            command = """({path} {args}) |& {python} {tee} --path {misc_file_path}.log""".format(
+                path=path,
+                args=reduce(lambda r, l: r + ' ' + l, arguments, ''),
+                python=sys.executable,
+                tee=os.path.join(os.getcwd(), 'applications', 'tee.py'),
+                misc_file_path=misc_file_path,
+            )
 
-            yield from process.wait()
-            return process.returncode
+            print(command)
+
+            with open(misc_file_path + '.sh', mode='w') as execute_file:
+                execute_file.write('#!/bin/sh' + os.linesep)
+                execute_file.write(command + os.linesep)
+                execute_file.write('echo ${PIPESTATUS[0]} > ' + misc_file_path +
+                                   '.exit' + os.linesep)
+
+            mode = os.stat(misc_file_path + '.sh').st_mode
+            mode |= (mode & 0o444) >> 2  # copy R bits to X
+            os.chmod(misc_file_path + '.sh', mode)
+
+            process = yield from asyncio.create_subprocess_exec(
+                misc_file_path + '.sh',
+                cwd=str(PurePath(path).parent),
+            )
+
+        yield from process.wait()
 
     except asyncio.CancelledError:
         if platform.system() == "Windows":
-            import psutil
             parent = psutil.Process(
                 process.pid).children(recursive=True)[3]  # TODO explain
             for child in parent.children(recursive=True):
@@ -175,27 +186,20 @@ def execute(own_uuid, path, arguments):
             parent.terminate()
             yield from process.wait()
 
-            os.remove(misc_file_path + '.bat')
-            with open(misc_file_path + '.exit') as log_file:
-                return log_file.readlines()[0].rstrip()
         else:
-            process.terminate()
+            children = psutil.Process(process.pid).children(recursive=True)  # TODO explain
+            for child in children:
+                print(child)
+            children[0].terminate()  # TODO returns 143
             yield from process.wait()
-            return process.returncode
 
-        #log_file.write(
-        #    ('Process got terminated.{}'.format(os.linesep)).encode('utf_8'))
+    if platform.system == 'Windows':
+        os.remove(misc_file_path + '.bat')
+    else:
+        os.remove(misc_file_path + '.sh')
 
-    except Exception as err:
-        #log_file.write(('Exception occured during the execution:{}{}'.format(
-        #    os.linesep, str(err))).encode('utf_8'))
-        #log_file.close()
-        raise err
-
-        #log_file.write(('Finished with code {}.{}'.format(
-    #    process.returncode, os.linesep)).encode('utf_8'))
-    #log_file.close()
-    #return process.returncode
+    with open(misc_file_path + '.exit') as log_file:
+        return log_file.readlines()[0].rstrip()
 
 
 @Rpc.method
