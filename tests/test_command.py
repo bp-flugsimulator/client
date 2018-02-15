@@ -482,7 +482,9 @@ class FileCommandTests(EventLoopTestCase):
 
             self.assertFalse(os.path.exists(backup))
             self.assertTrue(os.path.exists(destination))
-            self.assertEqual(open(destination, 'r').read(), self.hash2[1])
+
+            with open(destination, 'r') as file:
+                self.assertEqual(file.read(), self.hash2[1])
 
     def test_restore_file_no_destination_with_backup(self):
         source = "test.abc"
@@ -510,7 +512,8 @@ class FileCommandTests(EventLoopTestCase):
 
             self.assertFalse(os.path.exists(backup))
             self.assertTrue(os.path.exists(destination))
-            self.assertEqual(open(destination, 'r').read(), self.hash2[1])
+            with open(destination, 'r') as file:
+                self.assertEqual(file.read(), self.hash2[1])
 
     def test_restore_file_no_destination(self):
         source = "test.abc"
