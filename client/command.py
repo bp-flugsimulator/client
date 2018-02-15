@@ -188,7 +188,7 @@ def execute(own_uuid, path, arguments):
         else:
             children = psutil.Process(
                 process.pid).children(recursive=True).sort(
-                    key=lambda p: p['pid'])  # TODO explain
+                    key=lambda p: p.pid)  # TODO explain
             for child in children:
                 print(child)
             children[0].terminate()  # TODO returns 143
