@@ -147,8 +147,7 @@ def chain_execution(commands):
             cmd = Command(
                 command["method"],
                 uuid=command["uuid"],
-                **command["arguments"],
-            )
+                **command["arguments"])
         except Exception as err:
             print(err)
             continue
