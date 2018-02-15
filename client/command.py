@@ -135,7 +135,8 @@ def execute(own_uuid, path, arguments):
             startupinfo.dwFlags = subprocess.STARTF_USESHOWWINDOW
             startupinfo.wShowWindow = 6
 
-            command = """/c call {misc_file_path}.bat 2>&1 | {python} {tee} --path {misc_file_path}.log""".format(
+            # TODO 2>&1 blocks :() the input
+            command = """call {misc_file_path}.bat 2>&1 | {python} {tee} --path {misc_file_path}.log""".format(
                 python=sys.executable,
                 tee=os.path.join(os.getcwd(), 'applications', 'tee.py'),
                 misc_file_path=misc_file_path)
@@ -143,8 +144,7 @@ def execute(own_uuid, path, arguments):
             print(command)
 
             process = yield from asyncio.create_subprocess_exec(
-                'cmd.exe',
-                command,
+                *['cmd.exe','/c',command],
                 cwd=str(PurePath(path).parent),
                 creationflags=subprocess.CREATE_NEW_CONSOLE,
                 startupinfo=startupinfo)
