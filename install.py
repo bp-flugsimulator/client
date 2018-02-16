@@ -11,9 +11,11 @@ Example
 """
 
 from platform import system, architecture
-from os import listdir, getcwd, remove, mkdir, chdir
+from os import listdir, getcwd, remove, mkdir, getcwd
 from os.path import join
 from sys import stderr
+
+from json import loads
 
 from argparse import ArgumentParser
 
@@ -22,6 +24,58 @@ from urllib.request import urlretrieve
 from shutil import unpack_archive, rmtree
 
 import pip
+
+
+class Config:
+    """
+    Class that represents the config file
+    """
+
+    def __init__(self, download_c=None, download_p=False):
+        self.__download_client = download_c
+        self.__download_packages = download_p
+
+    @classmethod
+    def parse(cls):
+        """
+        Parses 'config.json' and returns a Config object
+
+        Return
+        ------
+        Config:
+            a Config object based on 'config.json'
+        """
+        try:
+            with open('config.json') as config_file:
+                data = config_file.read()
+                json = loads(data)
+                return cls(json['download_client'], json['download_packages'])
+        except FileNotFoundError:
+            return cls()
+
+    @property
+    def download_client(self):
+        """
+        Getter for __download_client
+
+        Returns
+        -------
+        str:
+            address of the server from where the client gets downloaded
+        """
+        return self.__download_client
+
+    @property
+    def download_packages(self):
+        """
+        Getter for __download_client
+
+        Returns
+        -------
+        bool:
+            True if packages will get downloaded otherwise false
+        """
+        return self.__download_packages
 
 
 def git_to_filename(git_url):
@@ -88,6 +142,7 @@ def install(lib_name):
     if pip.main(args) != 0:
         raise Exception('could not install ' + lib_name + ' from file')
 
+
 def download_client(address):
     """
     Downloads client files from the given address.
@@ -103,14 +158,15 @@ def download_client(address):
     (file_name, _) = urlretrieve(URL, filename="client.zip")
 
     print('clear lib folder')
-    rmtree(join(chdir(), 'libs'))
-    mkdir(join(chdir(), 'libs'))
+    rmtree(join(getcwd(), 'libs'))
+    mkdir(join(getcwd(), 'libs'))
 
     print('update files')
     unpack_archive(file_name)
     remove(file_name)
 
-def download_libary(lib_name):
+
+def download_library(lib_name):
     """
     Downloads a library to ./libs
 
@@ -136,7 +192,6 @@ def download_libary(lib_name):
     if pip.main(['download', lib_name, '-d', './libs']) != 0:
         raise Exception('could not download ' + lib_name)
 
-
 if __name__ == "__main__":
     # set up argument parser
     PARSER = ArgumentParser(
@@ -154,6 +209,7 @@ if __name__ == "__main__":
 
     ARGS = PARSER.parse_args()
 
+    CONFIG = Config.parse()
 
     # select requirements file
     if system() == 'Windows':
@@ -170,11 +226,13 @@ if __name__ == "__main__":
 
     if ARGS.download_client:
         download_client(ARGS.download_client)
+    elif CONFIG.download_client:
+        download_client(CONFIG.download_client)
 
-    if ARGS.download_packages:
+    if ARGS.download_packages or CONFIG.download_packages:
         with open(REQUIREMENTS_FILE) as requirements:
             for library in requirements:
-                download_libary(library)
+                download_library(library)
 
     with open(REQUIREMENTS_FILE) as requirements:
         for library in requirements:
