@@ -3,12 +3,14 @@ import asyncio
 import os
 import random
 import string
+import shutil
+
 from hashlib import md5
 
 from os import remove, getcwd
 from os.path import join, isfile
 
-from utils import Rpc
+from utils import Rpc, Status
 import client.command
 
 from client.command import Helper
@@ -21,7 +23,7 @@ class EventLoopTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        super(EventLoopTestCase, cls).setUpClass()
+        super().setUpClass()
 
         if os.name == 'nt':
             cls.loop = asyncio.ProactorEventLoop()
@@ -32,58 +34,232 @@ class EventLoopTestCase(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
+        super().tearDownClass()
         cls.loop.close()
 
 
-class TestFile:
-    """
-    A class which will generate a file.
+class FileSystemTestCase(EventLoopTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
 
-    Format:
-        [
-            (PATH, CREATE),
-            ...
-        ]
-    """
+        cls.working_dir = os.path.join(os.getcwd(), "unittest.files.temp")
 
-    def __init__(self, base, paths, removing=False):
-        self.paths = paths
-        self.base = base
-        self.removing = removing
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
 
-    def __enter__(self):
-        for (path, create) in self.paths:
-            if create:
-                path = os.path.join(self.base, path)
+    def setUp(self):
+        if os.path.exists(self.working_dir):
+            raise AssertionError(
+                "Can not start test because the test folder does allready exists."
+            )
 
-                if os.path.exists(path):
-                    raise ValueError(
-                        "File allready exists ... can not override!")
+        os.mkdir(self.working_dir)
 
-                print("Creating file {}".format(path))
+    def tearDown(self):
+        if not os.path.exists(self.working_dir):
+            raise AssertionError(
+                "Can not delete test folder (which was create before) because it does not exist anymore. "
+            )
 
-                with open(path, "w") as fil:
-                    fil.write(str(create))
+        shutil.rmtree(self.working_dir)
 
-        return list(map(lambda x: os.path.join(self.base, x[0]), self.paths))
+    def filesInDir(self):
+        """
+        Returns a list of files (recursive) within a directory. Every file has a prefix
+        based on the path related to the self.working_dir.
 
-    def __exit__(self, type, value, traceback):
-        print(os.listdir(self.base))
+        Returns
+        -------
+            List of strings
+        """
+        all_files = []
 
-        errors = []
+        for root, _, files in os.walk(self.working_dir):
+            subtracted = os.path.relpath(root, self.working_dir)
 
-        for (path, created) in self.paths:
-            path = os.path.join(self.base, path)
+            for fil in files:
+                all_files.append(os.path.join(subtracted, fil))
 
-            if not os.path.exists(path):
-                if not self.removing:
-                    errors.append(path)
-            else:
-                print("Deleting file {}".format(path))
-                os.remove(path)
+        return all_files
 
-        if errors:
-            raise ValueError("Could not delete crated file: {}".format(errors))
+    def dirsInDir(self):
+        """
+        Returns a list of directories (recursive) within a directory. Every directory has
+        a prefix based ont he path related to the self.working_dir.
+
+        Returns
+        -------
+            List of strings
+        """
+        dirs = []
+
+        for root, _, _ in os.walk(self.working_dir):
+            subtracted = os.path.relpath(root, self.working_dir)
+
+            if not subtracted == '.':
+                dirs.append(subtracted)
+
+        return dirs
+
+    def assertFilesArePresent(self, *args):
+        """
+        Asserts that all listed files are in the directory. Use relative paths.
+
+        Exception
+        ---------
+            AssertionError if a file is not in the directory.
+        """
+        for arg in args:
+            if not os.path.isfile(os.path.join(self.working_dir, arg)):
+                raise AssertionError(
+                    "The file `{}` was not present in the directory `{}`. The following files where present:\n{}".
+                    format(
+                        arg,
+                        self.working_dir,
+                        '\n'.join(map(str, self.filesInDir())),
+                    ))
+
+    def assertFilesAreNotPresent(self, *args):
+        """
+        Asserts that all listed files are not in the directory. Use relative paths.
+
+        Exception
+        ---------
+            AssertionError if a file is in the directory.
+        """
+        elements = []
+
+        for arg in args:
+            if os.path.isfile(os.path.join(self.working_dir, arg)):
+                elements.append(arg)
+
+        if elements:
+            raise AssertionError(
+                "The files `{}` were present in the directory `{}`. The following files where also present:\n{}".
+                format(
+                    ', '.join(map(str, elements)),
+                    self.working_dir,
+                    '\n'.join(map(str, self.filesInDir())),
+                ))
+
+    def assertDirsArePresent(self, *args):
+        """
+        Asserts that all listed directories are in the directory. Use relative paths.
+
+        Exception
+        ---------
+            AssertionError if a directory is not in the directory.
+        """
+        for arg in args:
+            if not os.path.isdir(os.path.join(self.working_dir, arg)):
+                raise AssertionError(
+                    "The directory `{}` was not present in the directory `{}`. The following directories where present:\n{}".
+                    format(
+                        arg,
+                        self.working_dir,
+                        '\n'.join(map(str, self.dirsInDir())),
+                    ))
+
+    def assertDirsAreNotPresent(self, *args):
+        """
+        Asserts that all listed directory are not in the directory. Use relative paths.
+
+        Exception
+        ---------
+            AssertionError if a directory is in the directory.
+        """
+        elements = []
+
+        for arg in args:
+            if os.path.isdir(os.path.join(self.working_dir, arg)):
+                elements.append(arg)
+
+        if elements:
+            raise AssertionError(
+                "The directories `{}` were present in the directory `{}`. The following directories where also present:\n{}".
+                format(
+                    ', '.join(map(str, elements)),
+                    self.working_dir,
+                    '\n'.join(map(str, self.dirsInDir())),
+                ))
+
+    def provideFile(self, path, data=None, exists=False, create=True):
+        """
+        Creates a file within the folder environment.
+
+        Returns
+        -------
+            (absolute path, file content, hash)
+        """
+        path = os.path.normpath(path)
+        path = os.path.normcase(path)
+
+        if '..' in path:
+            raise AssertionError(
+                "The path for a new file does not allow relative paths, which would go outside of the directory environment. ({})".
+                format(path))
+
+        path = os.path.join(self.working_dir, path)
+
+        if not exists and os.path.isfile(path):
+            raise AssertionError(
+                "Can not create file `{}` because a file with the same name allready exists.".
+                format(path))
+
+        if not exists and os.path.isdir(path):
+            raise AssertionError(
+                "Can not create file `{}` because a directory with the same name allready exists.".
+                format(path))
+
+        if data is None:
+            length = random.randint(0, 1000)
+
+            data = ''.join(
+                random.choice(string.ascii_uppercase + string.digits)
+                for _ in range(length))
+
+        if create:
+            with open(path, 'w') as nfile:
+                nfile.write(data)
+
+        hash_value = md5()
+        hash_value.update(str(data).encode('utf-8'))
+
+        return (path, data, hash_value.hexdigest())
+
+    def provideDirectory(self, path, exists=False):
+        """
+        Creates a directory within the folder environment.
+
+        Returns
+        -------
+            absolute path
+        """
+        path = os.path.normpath(path)
+        path = os.path.normcase(path)
+
+        if '..' in path:
+            raise AssertionError(
+                "The path for a new directory does not allow relative paths, which would go outside of the directory environment. ({})".
+                format(path))
+
+        path = os.path.join(self.working_dir, path)
+
+        if not exists and os.path.isfile(path):
+            raise AssertionError(
+                "Can not create directory `{}` because a file with the same name allready exists.".
+                format(path))
+
+        if not exists and os.path.isdir(path):
+            raise AssertionError(
+                "Can not create directory `{}` because a directory with the same name allready exists.".
+                format(path))
+
+        os.mkdir(path)
+
+        return path
 
 
 class TestCommands(EventLoopTestCase):
@@ -177,90 +353,153 @@ class TestCommands(EventLoopTestCase):
         self.assertTrue(isfile(join(path, 'test.txt')))
         remove(join(path, 'test.txt'))
 
+    def test_chain_command_none(self):
+        result = self.loop.run_until_complete(
+            client.command.chain_execution(commands=[{
+                'method': None,
+                'uuid': None,
+                'arguments': [],
+            }]))
 
-class FileCommandTests(EventLoopTestCase):
+        self.assertEqual(result, [])
+
+    def test_chain_command_success(self):
+        if os.name == 'nt':
+            prog = "C:\\Windows\\System32\\cmd.exe"
+            args = ["/c", "ECHO %date%"]
+        else:
+            prog = "/bin/sh"
+            args = ["-c", "echo $(date)"]
+
+        result = self.loop.run_until_complete(
+            client.command.chain_execution(commands=[{
+                'method': 'execute',
+                'uuid': 0,
+                'arguments': {
+                    'path': prog,
+                    'arguments': args
+                },
+            }]))
+
+        response = Status(
+            Status.ID_OK,
+            {
+                'method': 'execute',
+                'result': 0,
+            },
+            0,
+        )
+
+        self.assertEqual(Status(**result[0]), response)
+
+    def test_chain_command_one_failed(self):
+        if os.name == 'nt':
+            prog = "C:\\Windows\\System32\\cmd.exe"
+            args = ["/c", "ECHO %date%"]
+        else:
+            prog = "/bin/sh"
+            args = ["-c", "echo $(date)"]
+
+        result = self.loop.run_until_complete(
+            client.command.chain_execution(commands=[{
+                'method': 'execute',
+                'uuid': 0,
+                'arguments': {
+                    'path': prog,
+                },
+            }, {
+                'method': 'execute',
+                'uuid': 0,
+                'arguments': {
+                    'path': prog,
+                    'arguments': args
+                },
+            }]))
+
+        response1 = Status(
+            Status.ID_ERR,
+            {
+                'method':
+                'execute',
+                'result':
+                "execute() missing 1 required positional argument: 'arguments'",
+            },
+            0,
+        )
+
+        response2 = Status(
+            Status.ID_ERR,
+            {
+                'method':
+                'execute',
+                'result':
+                'Could not execute because earlier command was not successful.',
+            },
+            0,
+        )
+
+        self.assertEqual(Status(**result[0]), response1)
+        self.assertEqual(Status(**result[1]), response2)
+
+
+class FileCommandTests(FileSystemTestCase):
     @classmethod
     def setUpClass(cls):
-        super(FileCommandTests, cls).setUpClass()
+        super().setUpClass()
 
         cls.backup_ending = "_BACK"
-        cls.working_dir = os.path.abspath('./unittest.filecommand/')
-
-        allow_chars = string.ascii_letters + string.digits
-
-        string1 = ''.join([random.choice(allow_chars) for n in range(32)])
-        string2 = ''.join([random.choice(allow_chars) for n in range(32)])
-
-        m1 = md5()
-        m1.update(string1.encode('utf-8'))
-
-        m2 = md5()
-        m2.update(string2.encode('utf-8'))
-
-        cls.hash1 = ("{}".format(m1.hexdigest()), string1)
-        cls.hash2 = ("{}".format(m2.hexdigest()), string2)
-
-        if not os.path.exists(cls.working_dir):
-            os.mkdir(cls.working_dir)
-
-    @classmethod
-    def tearDownClass(cls):
-        super(FileCommandTests, cls).tearDownClass()
-        os.rmdir(cls.working_dir)
-
-    def setUp(self):
-        self.assertTrue(len(os.listdir(self.working_dir)) == 0)
-
-    def tearDown(self):
-        self.assertTrue(len(os.listdir(self.working_dir)) == 0)
 
     def test_move_file_source_directory(self):
         source = os.path.join(self.working_dir, "testdir_source")
         os.mkdir(source)
 
-        try:
-            self.assertRaises(
-                ValueError,
-                self.loop.run_until_complete,
-                client.command.move_file(source, "", self.backup_ending),
-            )
-        finally:
-            os.rmdir(source)
+        self.assertRaises(
+            ValueError,
+            self.loop.run_until_complete,
+            client.command.move_file(source, "", self.backup_ending),
+        )
 
     def test_move_file_destination_exists(self):
-        source = "test.abc"
-        destination = "test.abc.link"
+        (source, _, _) = self.provideFile("test.abc")
+        (destination, _, _) = self.provideFile("test.abc.link")
         backup = destination + self.backup_ending
 
-        with TestFile(self.working_dir, [
-            (source, True),
-            (destination, True),
-            (backup, False),
-        ]) as (source, destination, backup):
-            self.loop.run_until_complete(
-                client.command.move_file(source, destination,
-                                         self.backup_ending))
+        self.assertFilesArePresent(source, destination)
+        self.assertFilesAreNotPresent(backup)
 
-            self.assertTrue(os.path.isfile(destination))
-            self.assertTrue(os.path.isfile(backup))
+        self.loop.run_until_complete(
+            client.command.move_file(
+                source,
+                destination,
+                self.backup_ending,
+            ))
+
+        self.assertFilesArePresent(destination, backup, source)
 
     def test_move_file_destination_not_exists(self):
-        source = "test.abc"
-        destination = "test.abc.link"
+        (source, _, _) = self.provideFile("test.abc")
+        (destination, _, _) = self.provideFile("test.abc.link", create=False)
+        backup = destination + self.backup_ending
 
-        with TestFile(self.working_dir, [
-            (source, True),
-            (destination, False),
-        ]) as (source, destination):
-            self.loop.run_until_complete(
-                client.command.move_file(source, destination,
-                                         self.backup_ending))
+        self.assertFilesArePresent(source)
+        self.assertFilesAreNotPresent(backup, destination)
 
-            self.assertTrue(os.path.isfile(destination))
+        self.loop.run_until_complete(
+            client.command.move_file(
+                source,
+                destination,
+                self.backup_ending,
+            ))
+
+        self.assertFilesArePresent(destination, source)
+        self.assertFilesAreNotPresent(backup)
 
     def test_move_file_source_not_exists(self):
-        source = "test.abc"
-        destination = "test.abc.link"
+        (source, _, _) = self.provideFile("test.abc", create=False)
+        (destination, _, _) = self.provideFile("test.abc.link")
+
+        self.assertFilesArePresent(destination)
+        self.assertFilesAreNotPresent(source)
 
         self.assertRaises(
             FileNotFoundError,
@@ -272,97 +511,95 @@ class FileCommandTests(EventLoopTestCase):
             ),
         )
 
-        self.assertFalse(os.path.isfile(destination))
+        self.assertFilesArePresent(destination)
+        self.assertFilesAreNotPresent(source)
 
     def test_move_file_backup_exists(self):
-        source = "test.abc"
-        destination = "test.abc.link"
-        backup = destination + self.backup_ending
+        (source, _, _) = self.provideFile("test.abc")
+        (destination, _, _) = self.provideFile("test.abc.link")
+        (backup, _, _) = self.provideFile("test.abc.link" + self.backup_ending)
 
-        with TestFile(self.working_dir, [
-            (source, True),
-            (destination, True),
-            (backup, True),
-        ]) as (source, destination, backup):
-            self.assertRaises(FileExistsError, self.loop.run_until_complete,
-                              client.command.move_file(
-                                  source,
-                                  destination,
-                                  self.backup_ending,
-                              ))
+        self.assertFilesArePresent(source, destination, backup)
+
+        self.assertRaises(
+            FileExistsError,
+            self.loop.run_until_complete,
+            client.command.move_file(
+                source,
+                destination,
+                self.backup_ending,
+            ),
+        )
+
+        self.assertFilesArePresent(source, destination, backup)
 
     def test_move_file_destination_folder_success(self):
-        source = "test.abc"
-        destination = "./testdir"
+        (source, _, _) = self.provideFile("test.abc")
+        destination_path = self.provideDirectory("this_is_my_folder")
+        (destination, _, _) = self.provideFile(
+            "this_is_my_folder/test.abc",
+            create=False,
+        )
 
-        os.mkdir(os.path.join(self.working_dir, destination))
+        backup = destination + self.backup_ending
 
-        try:
-            with TestFile(self.working_dir, [
-                (source, True),
-                (os.path.join(destination, source), False),
-            ]) as (source, destination_file):
-                self.loop.run_until_complete(
-                    client.command.move_file(
-                        source,
-                        os.path.join(self.working_dir, destination),
-                        self.backup_ending,
-                    ))
+        self.assertFilesArePresent(source)
+        self.assertFilesAreNotPresent(backup, destination)
+        self.assertDirsArePresent(destination_path)
 
-                self.assertTrue(os.path.exists(destination_file))
-        finally:
-            os.rmdir(os.path.join(self.working_dir, destination))
+        self.loop.run_until_complete(
+            client.command.move_file(
+                source,
+                destination_path,
+                self.backup_ending,
+            ))
+
+        self.assertFilesArePresent(source, destination)
+        self.assertFilesAreNotPresent(backup)
+        self.assertDirsArePresent(destination_path)
 
     def test_move_file_destination_folder_destination_exist(self):
-        source = "test.abc"
-        destination = "./testdir"
-        backup = source + self.backup_ending
+        (source, _, _) = self.provideFile("test.abc")
+        destination_path = self.provideDirectory("this_is_my_folder")
+        (destination, _, _) = self.provideFile("this_is_my_folder/test.abc")
+        backup = destination + self.backup_ending
 
-        os.mkdir(os.path.join(self.working_dir, destination))
+        self.assertFilesArePresent(source, destination)
+        self.assertFilesAreNotPresent(backup)
+        self.assertDirsArePresent(destination_path)
 
-        try:
-            with TestFile(self.working_dir, [
-                (source, True),
-                (os.path.join(destination, source), True),
-                (os.path.join(destination, backup), False),
-            ]) as (source, destination_file, backup_file):
-                self.loop.run_until_complete(
-                    client.command.move_file(
-                        source,
-                        os.path.join(self.working_dir, destination),
-                        self.backup_ending,
-                    ))
+        self.loop.run_until_complete(
+            client.command.move_file(
+                source,
+                destination_path,
+                self.backup_ending,
+            ))
 
-                self.assertTrue(os.path.exists(destination_file))
-                self.assertTrue(os.path.exists(backup_file))
-        finally:
-            os.rmdir(os.path.join(self.working_dir, destination))
+        self.assertFilesArePresent(source, destination, backup)
+        self.assertDirsArePresent(destination_path)
 
     def test_move_file_destination_folder_backup_exist(self):
-        source = "test.abc"
-        destination = "./testdir"
-        backup = source + self.backup_ending
+        (source, _, _) = self.provideFile("test.abc")
+        destination_path = self.provideDirectory("this_is_my_folder")
+        (destination, _, _) = self.provideFile("this_is_my_folder/test.abc")
+        (backup, _, _) = self.provideFile("this_is_my_folder/test.abc" +
+                                          self.backup_ending)
 
-        os.mkdir(os.path.join(self.working_dir, destination))
+        self.assertFilesArePresent(source, destination, backup)
+        self.assertDirsArePresent(destination_path)
 
-        try:
-            with TestFile(self.working_dir, [
-                (source, True),
-                (os.path.join(destination, source), True),
-                (os.path.join(destination, backup), True),
-            ]) as (source, destination_file, backup_file):
-                self.assertRaises(
-                    FileExistsError, self.loop.run_until_complete,
-                    client.command.move_file(
-                        source,
-                        os.path.join(self.working_dir, destination),
-                        self.backup_ending,
-                    ))
+        self.assertRaises(
+            FileExistsError,
+            self.loop.run_until_complete,
+            client.command.move_file(
+                source,
+                destination_path,
+                self.backup_ending,
+            ),
+        )
 
-                self.assertTrue(os.path.exists(destination_file))
-                self.assertTrue(os.path.exists(backup_file))
-        finally:
-            os.rmdir(os.path.join(self.working_dir, destination))
+        self.assertFilesArePresent(source, destination, backup)
+        self.assertDirsArePresent(destination_path)
 
     def test_move_file_wrong_source_path_object(self):
         self.assertRaises(
@@ -386,176 +623,244 @@ class FileCommandTests(EventLoopTestCase):
         )
 
     def test_restore_file_no_backup(self):
-        source = "test.abc"
-        destination = "test.abc.link"
+        (source, _, hash_source) = self.provideFile("test.abc")
+        (destination, _, _) = self.provideFile(
+            "test.abc.link",
+            create=False,
+        )
+        backup = destination + self.backup_ending
 
-        with TestFile(
-                self.working_dir,
-            [
-                (source, self.hash1[1]),
-                (destination, False),
-            ],
-                removing=True,
-        ) as (source, destination):
-            self.loop.run_until_complete(
-                client.command.move_file(
-                    source,
-                    destination,
-                    self.backup_ending,
-                ))
+        self.assertFilesArePresent(source)
+        self.assertFilesAreNotPresent(destination, backup)
 
-            self.assertTrue(os.path.exists(destination))
+        self.loop.run_until_complete(
+            client.command.move_file(
+                source,
+                destination,
+                self.backup_ending,
+            ))
 
-            self.loop.run_until_complete(
-                client.command.restore_file(
-                    source,
-                    destination,
-                    self.backup_ending,
-                    self.hash1[0],
-                ))
+        self.assertFilesArePresent(source, destination)
+        self.assertFilesAreNotPresent(backup)
 
-            self.assertFalse(os.path.exists(destination))
+        self.loop.run_until_complete(
+            client.command.restore_file(
+                source,
+                destination,
+                self.backup_ending,
+                hash_source,
+            ))
+
+        self.assertFilesArePresent(source)
+        self.assertFilesAreNotPresent(destination, backup)
+
+    def test_restore_file_no_backup_destination_dir(self):
+        (source, _, hash_source) = self.provideFile("test.abc")
+        destination_path = self.provideDirectory("this_is_my_folder")
+        (destination, _, _) = self.provideFile("this_is_my_folder/test.abc")
+        (backup, _, _) = self.provideFile(
+            "this_is_my_folder/test.abc" + self.backup_ending,
+            create=False,
+        )
+
+        self.assertFilesArePresent(source, destination)
+        self.assertFilesAreNotPresent(backup)
+        self.assertDirsArePresent(destination_path)
+
+        self.loop.run_until_complete(
+            client.command.move_file(
+                source,
+                destination_path,
+                self.backup_ending,
+            ))
+
+        self.assertFilesArePresent(source, destination, backup)
+        self.assertDirsArePresent(destination_path)
+
+        self.loop.run_until_complete(
+            client.command.restore_file(
+                source,
+                destination_path,
+                self.backup_ending,
+                hash_source,
+            ))
+
+        self.assertFilesArePresent(source, destination)
+        self.assertFilesAreNotPresent(backup)
+        self.assertDirsArePresent(destination_path)
 
     def test_restore_file_with_backup(self):
-        source = "test.abc"
-        destination = "test.abc.link"
-        backup = destination + self.backup_ending
+        (source, data_source, hash_source) = self.provideFile("test.abc")
+        destination_path = self.provideDirectory("this_is_my_folder")
+        (
+            destination,
+            data_destination,
+            hash_destination,
+        ) = self.provideFile("this_is_my_folder/test.abc")
+        (backup, _, _) = self.provideFile(
+            "this_is_my_folder/test.abc" + self.backup_ending,
+            create=False,
+        )
 
-        with TestFile(
-                self.working_dir,
-            [
-                (source, self.hash1[1]),
-                (destination, False),
-                (backup, self.hash2[1]),
-            ],
-                removing=True,
-        ) as (source, destination, backup):
-            self.loop.run_until_complete(
-                client.command.move_file(
-                    source,
-                    destination,
-                    self.backup_ending,
-                ))
+        self.assertFilesArePresent(source, destination)
+        self.assertDirsArePresent(destination_path)
 
-            self.assertTrue(os.path.exists(destination))
+        self.loop.run_until_complete(
+            client.command.move_file(
+                source,
+                destination_path,
+                self.backup_ending,
+            ))
 
-            self.loop.run_until_complete(
-                client.command.restore_file(
-                    source,
-                    destination,
-                    self.backup_ending,
-                    self.hash1[0],
-                ))
+        self.assertFilesArePresent(source, destination, backup)
 
-            self.assertFalse(os.path.exists(backup))
-            self.assertTrue(os.path.exists(destination))
+        with open(destination, 'r') as clone:
+            self.assertEqual(clone.read(), data_source)
 
-            with open(destination, 'r') as file:
-                self.assertEqual(file.read(), self.hash2[1])
+        self.assertDirsArePresent(destination_path)
+
+        self.loop.run_until_complete(
+            client.command.restore_file(
+                source,
+                destination_path,
+                self.backup_ending,
+                hash_source,
+            ))
+
+        self.assertFilesArePresent(source, destination)
+
+        with open(destination, 'r') as clone:
+            self.assertEqual(clone.read(), data_destination)
+
+        self.assertDirsArePresent(destination_path)
 
     def test_restore_file_no_destination_with_backup(self):
-        source = "test.abc"
-        destination = "test.abc.link"
-        backup = destination + self.backup_ending
+        (source, _, hash_source) = self.provideFile("test.abc")
+        (destination, _, _) = self.provideFile(
+            "test.abc.link",
+            create=False,
+        )
+        (
+            backup,
+            data_backup,
+            _,
+        ) = self.provideFile("test.abc.link" + self.backup_ending)
 
-        with TestFile(
-                self.working_dir,
-            [
-                (source, self.hash1[1]),
-                (destination, False),
-                (backup, self.hash2[1]),
-            ],
-                removing=True,
-        ) as (source, destination, backup):
-            self.assertFalse(os.path.exists(destination))
+        self.assertFilesArePresent(source, backup)
+        self.assertFilesAreNotPresent(destination)
 
-            self.loop.run_until_complete(
-                client.command.restore_file(
-                    source,
-                    destination,
-                    self.backup_ending,
-                    self.hash1[0],
-                ))
+        self.loop.run_until_complete(
+            client.command.restore_file(
+                source,
+                destination,
+                self.backup_ending,
+                hash_source,
+            ))
 
-            self.assertFalse(os.path.exists(backup))
-            self.assertTrue(os.path.exists(destination))
-            with open(destination, 'r') as file:
-                self.assertEqual(file.read(), self.hash2[1])
+        self.assertFilesArePresent(source, destination)
+        self.assertFilesAreNotPresent(backup)
+
+        with open(destination, 'r') as clone:
+            self.assertEqual(clone.read(), data_backup)
 
     def test_restore_file_no_destination(self):
-        source = "test.abc"
-        destination = "test.abc.link"
+        (source, _, hash_source) = self.provideFile("test.abc")
+        (destination, _, _) = self.provideFile(
+            "test.abc.link",
+            create=False,
+        )
+        backup = destination + self.backup_ending
 
-        with TestFile(
-                self.working_dir,
-            [
-                (source, self.hash1[1]),
-                (destination, False),
-            ],
-                removing=True,
-        ) as (source, destination):
-            self.assertFalse(os.path.exists(destination))
+        self.assertFilesArePresent(source)
+        self.assertFilesAreNotPresent(destination, backup)
 
-            self.loop.run_until_complete(
-                client.command.restore_file(
-                    source,
-                    destination,
-                    self.backup_ending,
-                    self.hash1[0],
-                ))
+        self.loop.run_until_complete(
+            client.command.restore_file(
+                source,
+                destination,
+                self.backup_ending,
+                hash_source,
+            ))
 
-            self.assertFalse(os.path.exists(destination))
+        self.assertFilesArePresent(source)
+        self.assertFilesAreNotPresent(destination, backup)
 
     def test_restore_file_replaced(self):
-        source = "test.abc"
-        destination = "test.abc.link"
+        (source, _, hash_source) = self.provideFile("test.abc")
+        (destination, _, _) = self.provideFile("test.abc.link")
+        backup = destination + self.backup_ending
 
-        with TestFile(
-                self.working_dir,
-            [
-                (source, self.hash1[1]),
-                (destination, self.hash2[1]),
-            ],
-                removing=True,
-        ) as (source, destination):
-            self.assertTrue(os.path.exists(destination))
+        self.assertFilesArePresent(source, destination)
+        self.assertFilesAreNotPresent(backup)
 
-            self.assertRaises(
-                ValueError,
-                self.loop.run_until_complete,
-                client.command.restore_file(
-                    source,
-                    destination,
-                    self.backup_ending,
-                    self.hash1[0],
-                ),
-            )
+        self.assertRaises(
+            ValueError,
+            self.loop.run_until_complete,
+            client.command.restore_file(
+                source,
+                destination,
+                self.backup_ending,
+                hash_source,
+            ),
+        )
 
-            self.assertTrue(os.path.exists(destination))
+        self.assertFilesArePresent(source, destination)
+        self.assertFilesAreNotPresent(backup)
 
     def test_restore_file_modified(self):
-        source = "test.abc"
-        destination = "test.abc.link"
+        (source, _, hash_source) = self.provideFile("test.abc")
+        (destination, _, _) = self.provideFile("test.abc.link", create=False)
+        backup = destination + self.backup_ending
 
-        with TestFile(
-                self.working_dir,
-            [
-                (source, self.hash1[1]),
-                (destination, self.hash1[1]),
-            ],
-                removing=True,
-        ) as (source, destination):
-            self.assertTrue(os.path.exists(destination))
+        self.assertFilesArePresent(source)
+        self.assertFilesAreNotPresent(backup, destination)
 
-            self.loop.run_until_complete(
-                client.command.restore_file(
-                    source,
-                    destination,
-                    self.backup_ending,
-                    self.hash2[0],
-                ))
+        self.loop.run_until_complete(
+            client.command.move_file(
+                source,
+                destination,
+                self.backup_ending,
+            ))
 
-            self.assertFalse(os.path.exists(destination))
+        self.assertFilesArePresent(source, destination)
+        self.assertFilesAreNotPresent(backup)
+
+        with open(destination, 'w+') as clone:
+            clone.write("test")
+
+        self.loop.run_until_complete(
+            client.command.restore_file(
+                source,
+                destination,
+                self.backup_ending,
+                hash_source,
+            ))
+
+        self.assertFilesArePresent(source)
+        self.assertFilesAreNotPresent(backup, destination)
+
+    def test_restore_file_source_dir(self):
+        source_path = self.provideDirectory("test")
+        (destination, _, hash_destination) = self.provideFile(
+            "test.abc.link",
+            create=False,
+        )
+
+        self.assertFilesAreNotPresent(destination, source_path)
+
+        self.assertRaisesRegex(
+            ValueError,
+            "Moving a directory is not supported.",
+            self.loop.run_until_complete,
+            client.command.restore_file(
+                source_path,
+                destination,
+                self.backup_ending,
+                hash_destination,
+            ),
+        )
+
+        self.assertFilesAreNotPresent(destination, source_path)
 
     def test_restore_file_wrong_source_path_object(self):
         self.assertRaises(

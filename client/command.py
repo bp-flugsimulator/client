@@ -237,6 +237,7 @@ def move_file(source_path, destination_path, backup_ending):
     else:
         source_path = os.path.abspath(source_path)
         destination_path = os.path.abspath(destination_path)
+
         # File ending of backup files
         backup_file_ending = backup_ending
 
@@ -315,17 +316,28 @@ def restore_file(source_path, destination_path, backup_ending, hash_value):
         source_path = os.path.abspath(source_path)
         destination_path = os.path.abspath(destination_path)
 
+        if os.path.isdir(source_path):
+            raise ValueError(
+                "Moving a directory is not supported. ({})".format(
+                    source_path))
+
+        # Add file name to path, if destination is a directory.
+        if os.path.isdir(destination_path):
+            destination_path = os.path.join(
+                destination_path,
+                os.path.basename(source_path),
+            )
+
         backup_path = destination_path + backup_ending
 
         if not os.path.exists(destination_path):
             if os.path.exists(backup_path):
                 os.rename(backup_path, destination_path)
-
             return None
 
         hash_gen = hash_file(destination_path)
 
-        if hash_value != hash_gen:
+        if hash_value != hash_gen and os.path.exists(source_path):
             # if the hash values do not match then
             # check if the source file was changed
             # if the source file was changed but
