@@ -56,7 +56,7 @@ class ProgramLogger:
 
         server_coroutine = asyncio.start_server(
             handle_connection,
-            '127.0.0.1',
+            'localhost',
             self.__port,
             loop=asyncio.get_event_loop(),
         )

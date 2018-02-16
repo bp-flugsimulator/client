@@ -124,12 +124,12 @@ def execute(own_uuid, path, arguments):
     LOGGER.add_program_logger(own_uuid, misc_file_name + '.log', 1048576)
     PROGRAM_LOGGER = LOGGER.program_loggers[own_uuid]
     log_task = asyncio.get_event_loop().create_task(PROGRAM_LOGGER.run())
-
+    print(os.path.normpath(path))
     try:
         if platform.system() == 'Windows':
             with open(misc_file_path + '.bat', mode='w') as execute_file:
-                execute_file.write('call "{path}" {args}'.format(
-                    path=path,
+                execute_file.write('call {path} {args}'.format(
+                    path= ('"' + path + '"') if ' ' in path else path,
                     args=reduce(lambda r, l: r + ' ' + l, arguments, ''),
                 ))
                 execute_file.write('{}@echo off'.format(os.linesep))
@@ -188,17 +188,37 @@ def execute(own_uuid, path, arguments):
         )
 
     except asyncio.CancelledError:
-        for child in psutil.Process(process.pid).children(recursive=True):
-            if child.pid is not process.pid and child.pid is not PROGRAM_LOGGER.pid:
-                child.terminate()
-
-        done, pending = yield from asyncio.wait(
-            set([process.wait()]), timeout=10)
-        if pending:
+        if platform.system() == 'Windows':
+            for child in psutil.Process(process.pid).children():
+                if 'cmd.exe' in child.name():
+                    print('lul')
+                    for grandchild in child.children(recursive=True):
+                        grandchild.terminate()
+        else:
             for child in psutil.Process(process.pid).children(recursive=True):
-                if child.pid is not process.pid and child.pid is not PROGRAM_LOGGER.pid:
-                    print('kill')
-                    child.kill()
+                print('process:{} , logger:{}, child:{}'.format(process.pid, PROGRAM_LOGGER.pid, child))
+                if child.pid != process.pid and child.pid != PROGRAM_LOGGER.pid:
+                    print('terminated: {}'.format(child))
+                    child.terminate()
+
+        _, pending = yield from asyncio.wait(
+            set([process.wait()]), timeout=3)
+
+        # TODO remove copy and paste code
+        if pending:
+            if platform.system() == 'Windows':
+                for child in psutil.Process(process.pid).children():
+                    print(child.name())
+                    if 'cmd.exe' in child.name():
+                        print(child)
+                        for grandchild in child.children(recursive=True):
+                            grandchild.kill()
+            else:
+                for child in psutil.Process(process.pid).children(recursive=True):
+                    print('process:{} , logger:{}, child:{}'.format(process.pid, PROGRAM_LOGGER.pid, child))
+                    if child.pid != process.pid and child.pid != PROGRAM_LOGGER.pid:
+                        print('terminated: {}'.format(child))
+                        child.kill()
 
         yield from asyncio.wait(
             set([process.wait(), log_task]),

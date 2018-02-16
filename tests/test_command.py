@@ -158,7 +158,7 @@ class TestCommands(EventLoopTestCase):
         self.assertTrue(isfile(join(path, 'test.txt')))
         remove(join(path, 'test.txt'))
 
-    def test_cancel_execution(self):
+    def _test_cancel_execution(self):
         if os.name == 'nt':
             prog = "C:\\Windows\\System32\\cmd.exe"
             args = ["/c", "notepad.exe"]
