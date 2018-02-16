@@ -1,24 +1,20 @@
 from argparse import ArgumentParser
 from sys import stdin, stdout
+from socket import socket, AF_INET, SOCK_STREAM
+from os import getpid, linesep
 
-parser = ArgumentParser()
-parser.add_argument('--path', type=str, help='path to logfile')
-parser.add_argument('--max-size', type=int, default=1048576,help='max size of the logfile in bytes')
-parser.add_argument('--chunk-size', type=int, default=1024,help='max size of a chunk in bytes')
+parser = ArgumentParser() 
+parser.add_argument('--port', type=int, help='port where the log is send to')
 args = parser.parse_args()
 
-with open(args.path, mode='wb+') as logfile:
-    while True:
-        buffer = stdin.buffer.read(1)
-        if buffer.decode() is '':
-            break
-        elif logfile.tell() >= args.max_size:
-            logfile.seek(args.chunk_size)
-            tmp = logfile.read()
-            logfile.seek(0)
-            logfile.write(tmp)
+SOCKET = socket(AF_INET, SOCK_STREAM)
+SOCKET.connect(('localhost', args.port))
+SOCKET.send((str(getpid()) + linesep).encode())
 
-        logfile.write(buffer)
-        logfile.flush()
-        stdout.buffer.write(buffer)
-        stdout.buffer.flush()
+buffer = stdin.buffer.read(1)
+while buffer.decode() is not '':
+    stdout.buffer.write(buffer)
+    stdout.buffer.flush()
+    SOCKET.send(buffer)
+    buffer = stdin.buffer.read(1)
+SOCKET.close()

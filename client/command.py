@@ -17,6 +17,8 @@ from functools import reduce
 from utils import Rpc
 import utils.rpc
 
+from .logger import LOGGER
+
 
 class Helper:
     """
@@ -75,9 +77,6 @@ def hash_file(path):
     return "{}".format(md5.hexdigest())
 
 
-from .logger import LOGGER
-
-
 @Rpc.method
 @asyncio.coroutine
 def online():
@@ -119,14 +118,20 @@ def execute(own_uuid, path, arguments):
             if not isinstance(arg, str):
                 raise ValueError("Element in arguments is not a string.")
 
-    misc_file_path = os.path.join(LOGGER.logdir, '{}-{}'.format(
-        PurePath(path).parts[-1], own_uuid))
+    misc_file_name = '{}-{}'.format(PurePath(path).parts[-1], own_uuid)
+    misc_file_path = os.path.join(LOGGER.logdir, misc_file_name)
+
+    LOGGER.add_program_logger(own_uuid, misc_file_name + '.log', 1048576)
+    PROGRAM_LOGGER = LOGGER.program_loggers[own_uuid]
+    log_task = asyncio.get_event_loop().create_task(PROGRAM_LOGGER.run())
 
     try:
         if platform.system() == 'Windows':
             with open(misc_file_path + '.bat', mode='w') as execute_file:
-                execute_file.write('call ' + path + ' ' + reduce(
-                    lambda r, l: r + ' ' + l, arguments, ''))
+                execute_file.write('call "{path}" {args}'.format(
+                    path=path,
+                    args=reduce(lambda r, l: r + ' ' + l, arguments, ''),
+                ))
                 execute_file.write('{}@echo off'.format(os.linesep))
                 execute_file.write('{}echo %errorlevel% > {}.exit'.format(
                     os.linesep, misc_file_path))
@@ -136,25 +141,28 @@ def execute(own_uuid, path, arguments):
             startupinfo.wShowWindow = 6
 
             # TODO 2>&1 blocks :() the input
-            command = """call {misc_file_path}.bat 2>&1 | {python} {tee} --path {misc_file_path}.log""".format(
+            command = """call {misc_file_path}.bat 2>&1 | {python} {tee} --port {port}""".format(
                 python=sys.executable,
                 tee=os.path.join(os.getcwd(), 'applications', 'tee.py'),
-                misc_file_path=misc_file_path)
+                misc_file_path=misc_file_path,
+                port=PROGRAM_LOGGER.port,
+            )
 
             print(command)
 
             process = yield from asyncio.create_subprocess_exec(
-                *['cmd.exe','/c',command],
+                *['cmd.exe', '/c', command],
                 cwd=str(PurePath(path).parent),
                 creationflags=subprocess.CREATE_NEW_CONSOLE,
                 startupinfo=startupinfo)
         else:
-            command = """({path} {args}) 2>&1 | {python} {tee} --path {misc_file_path}.log""".format(
+            command = """({path} {args}) 2>&1 | {python} {tee} --port {port}""".format(
                 path=path,
                 args=reduce(lambda r, l: r + ' ' + l, arguments, ''),
                 python=sys.executable,
                 tee=os.path.join(os.getcwd(), 'applications', 'tee.py'),
                 misc_file_path=misc_file_path,
+                port=PROGRAM_LOGGER.port,
             )
 
             print(command)
@@ -174,25 +182,28 @@ def execute(own_uuid, path, arguments):
                 cwd=str(PurePath(path).parent),
             )
 
-        yield from process.wait()
+        yield from asyncio.wait(
+            set([process.wait(), log_task]),
+            return_when=asyncio.ALL_COMPLETED,
+        )
 
     except asyncio.CancelledError:
-        if platform.system() == 'Windows':
-            parent = psutil.Process(
-                process.pid).children(recursive=True)[3]  # TODO explain
-            for child in parent.children(recursive=True):
+        for child in psutil.Process(process.pid).children(recursive=True):
+            if child.pid is not process.pid and child.pid is not PROGRAM_LOGGER.pid:
                 child.terminate()
-            parent.terminate()
-            yield from process.wait()
 
-        else:
-            # TODO explain
-            children = psutil.Process(process.pid).children(recursive=True)
-            children.sort(key=lambda p: p.pid)
-            for child in children:
-                print(child)
-            children[0].terminate()  # TODO returns 143
-            yield from process.wait()
+        done, pending = yield from asyncio.wait(
+            set([process.wait()]), timeout=10)
+        if pending:
+            for child in psutil.Process(process.pid).children(recursive=True):
+                if child.pid is not process.pid and child.pid is not PROGRAM_LOGGER.pid:
+                    print('kill')
+                    child.kill()
+
+        yield from asyncio.wait(
+            set([process.wait(), log_task]),
+            return_when=asyncio.ALL_COMPLETED,
+        )
 
     if platform.system() == 'Windows':
         os.remove(misc_file_path + '.bat')
