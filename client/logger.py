@@ -8,9 +8,10 @@ from sys import stdout
 
 from os import listdir, mkdir, getcwd
 from os.path import join, isdir
-from pathlib import PurePath
+import websockets
 
 from asyncio import Future
+from threading import Lock
 
 from random import randrange
 
@@ -24,11 +25,14 @@ class ProgramLogger:
     class used for logging one program
     """
 
-    def __init__(self, path, port, max_file_size):
+    def __init__(self, path, port, max_file_size, url):
         self.__port = port
         self.__pid = 0
         self.__path = path
         self.__max_file_size = max_file_size
+        self.__url = url
+        self.__ws_connection = None
+        self.__lock = Lock()
 
     @property
     def pid(self):
@@ -49,14 +53,19 @@ class ProgramLogger:
             with open(self.__path, mode='wb') as logfile:
                 while not reader.at_eof():
                     buffer = yield from reader.read(1)
-                    logfile.write(buffer)
-                    # log to websocket if enabled
+                    with self.__lock:
+                        logfile.write(buffer)
+                        logfile.flush()
+                        if self.__ws_connection:
+                            yield from self.__ws_connection.send(buffer)
             writer.close()
+            if self.__ws_connection:
+                self.disable_remote()
             finished.set_result(True)
 
         server_coroutine = asyncio.start_server(
             handle_connection,
-            'localhost',
+            '127.0.0.1',
             self.__port,
             loop=asyncio.get_event_loop(),
         )
@@ -71,14 +80,19 @@ class ProgramLogger:
             data = logfile.read()
             return data
 
+    @asyncio.coroutine
     def enable_remote(self):
-        pass
-        # connect websocket
-        # block logging
-        # send existing log over websocket
-        # enable logging over websocket
-        # unblock logging
+        self.__ws_connection = yield from websockets.connect(self.__url)
 
+        with self.__lock:
+            with open(self.__path, mode='rb') as logfile:
+                data = logfile.read()
+                yield from self.__ws_connection.send(data)
+
+    @asyncio.coroutine
+    def disable_remote(self):
+        with self.__lock:
+            yield from self.__ws_connection.close()
 
 class ClientLogger:
     """
@@ -105,6 +119,7 @@ class ClientLogger:
         self.__file_ch = None
         self.__stream_ch = None
         self.__program_loggers = dict()
+        self.__url = None
 
         if not isdir(join(getcwd(), 'logs')):
             mkdir('logs')
@@ -117,6 +132,7 @@ class ClientLogger:
                     join(self.__logdir, file_name),
                     port,
                     max_file_size,
+                    self.__url,
                 )
                 break
             except OSError as err:
@@ -124,6 +140,14 @@ class ClientLogger:
                     pass
                 else:
                     raise err
+
+    @property
+    def url(self):
+        return self.__url
+
+    @url.setter
+    def url(self, url):
+        self.__url = url
 
     @property
     def program_loggers(self):

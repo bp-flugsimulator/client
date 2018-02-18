@@ -10,6 +10,8 @@ from os import mkdir, getcwd, listdir, rmdir
 
 from shutil import rmtree
 
+from uuid import uuid4
+
 from datetime import datetime
 
 from client import logger
@@ -82,3 +84,8 @@ class TestCommands(TestCase):
         self.assertIn(dir_2, dirs)
 
         rmdir(join(self.FOLDER, dir_unknown))
+
+    def test_add_program_logger(self):
+        uuid = uuid4().hex
+        logger.LOGGER.add_program_logger(uuid, '{}.log'.format(uuid), 100)
+        self.assertIn(uuid, logger.LOGGER.program_loggers)

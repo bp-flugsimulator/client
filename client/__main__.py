@@ -59,6 +59,11 @@ def main():
         "commands",
     )
 
+    LOGGER.url = generate_uri(
+        args.host,
+        args.port,
+        "logs",
+    )
     LOGGER.enable()
 
     print("Starting client.")

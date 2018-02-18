@@ -1,8 +1,11 @@
 import unittest
 import asyncio
 import os
+import sys
 import random
 import string
+import websockets
+
 from hashlib import md5
 
 from os import remove, getcwd
@@ -158,8 +161,8 @@ class TestCommands(EventLoopTestCase):
         self.assertTrue(isfile(join(path, 'test.txt')))
         remove(join(path, 'test.txt'))
 
-    def _test_cancel_execution(self):
-        if os.name == 'nt':
+    def test_cancel_execution_with_terminate(self):
+        if os.name is 'nt':
             prog = "C:\\Windows\\System32\\cmd.exe"
             args = ["/c", "notepad.exe"]
             return_code = '15'
@@ -167,6 +170,28 @@ class TestCommands(EventLoopTestCase):
             prog = "/bin/bash"
             args = ['-c', '"sleep 100"']
             return_code = '143'  # TODO why not -15 ???
+
+        @asyncio.coroutine
+        def create_and_cancel_task():
+            task = self.loop.create_task(
+                client.command.execute(uuid4().hex, prog, args))
+            yield from asyncio.sleep(0.5)
+            task.cancel()
+            print("canceled task")
+            result = yield from task
+            return result
+
+        res = self.loop.run_until_complete(create_and_cancel_task())
+        self.assertEqual(return_code, res)
+
+    def test_cancel_execution_with_kill(self):
+        prog = sys.executable
+        args =  [join(getcwd(), 'applications', 'kill_me.py')]
+
+        if os.name is 'nt':
+            return_code = '15'
+        else:
+            return_code = '144'
 
         @asyncio.coroutine
         def create_and_cancel_task():
@@ -207,8 +232,65 @@ class TestCommands(EventLoopTestCase):
         )
 
     def test_get_log_unknown_uuid(self):
-        self.assertRaises(FileNotFoundError, self.loop.run_until_complete,
+        self.assertRaises(KeyError, self.loop.run_until_complete,
                           client.command.get_log('abcdefg'))
+
+    def test_websocket_logging(self):
+        if os.name is 'nt':
+            prog = 'cmd'
+            args = ['/c', 'timeout 3 >nul & echo 0& timeout 1 >nul & echo 1']
+            call_log = 'call {}  {}'.format(prog, args[0])
+            excpected_log = [b'0', b'\r', b'\n', b'1', b'\r', b'\n', b'']
+        else:
+            prog = 'bash'
+            args = ['-c', 'sleep 3 & echo 0& sleep 1 & echo 1']
+            call_log = ''
+            excpected_log = [b'0', b'\n', b'1', b'\n', b'']
+        uuid = uuid4().hex
+
+        @asyncio.coroutine
+        def enable_logging():
+            yield from asyncio.sleep(0.5)
+            yield from client.command.enable_logging(uuid)
+
+        @asyncio.coroutine
+        def start_execution():
+            print('started execution')
+            yield from client.command.execute(uuid, prog, args)
+            print('finished execution')
+
+        @asyncio.coroutine
+        def start_server():
+            finished = asyncio.Future()
+
+            @asyncio.coroutine
+            def websocket_handler(websocket, path):
+                self.assertEqual('/logs', path)
+                line = yield from websocket.recv()
+                self.assertIn(call_log, str(line))
+                for elem in excpected_log:
+                    byte = yield from websocket.recv()
+                    self.assertEqual(elem, byte)
+                finished.set_result(None)
+
+            server_handle = yield from websockets.serve(websocket_handler, host='127.0.0.1', port=8750)
+            yield from finished
+            server_handle.close()
+            yield from server_handle.wait_closed()
+
+        @asyncio.coroutine
+        def wait_for_all():
+            tasks = {
+                start_server(),
+                start_execution(),
+                enable_logging(),
+            }
+            yield from asyncio.wait(tasks, return_when=asyncio.ALL_COMPLETED)
+            yield from client.command.disable_logging(uuid)
+
+        LOGGER.url = 'ws://localhost:8750/logs'
+
+        self.loop.run_until_complete(wait_for_all())
 
 
 class FileCommandTests(EventLoopTestCase):

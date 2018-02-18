@@ -86,6 +86,15 @@ def online():
     """
     pass
 
+@Rpc.method
+@asyncio.coroutine
+def enable_logging(uuid):
+    yield from LOGGER.program_loggers[uuid].enable_remote()
+
+@Rpc.method
+@asyncio.coroutine
+def disable_logging(uuid):
+    yield from LOGGER.program_loggers[uuid].disable_remote()
 
 @Rpc.method
 @asyncio.coroutine
@@ -124,7 +133,7 @@ def execute(own_uuid, path, arguments):
     LOGGER.add_program_logger(own_uuid, misc_file_name + '.log', 1048576)
     PROGRAM_LOGGER = LOGGER.program_loggers[own_uuid]
     log_task = asyncio.get_event_loop().create_task(PROGRAM_LOGGER.run())
-    print(os.path.normpath(path))
+
     try:
         if platform.system() == 'Windows':
             with open(misc_file_path + '.bat', mode='w') as execute_file:
@@ -182,48 +191,32 @@ def execute(own_uuid, path, arguments):
                 cwd=str(PurePath(path).parent),
             )
 
-        yield from asyncio.wait(
-            set([process.wait(), log_task]),
-            return_when=asyncio.ALL_COMPLETED,
-        )
+        yield from asyncio.wait({process.wait(), log_task},return_when=asyncio.ALL_COMPLETED,)
 
     except asyncio.CancelledError:
-        if platform.system() == 'Windows':
-            for child in psutil.Process(process.pid).children():
-                if 'cmd.exe' in child.name():
-                    print('lul')
-                    for grandchild in child.children(recursive=True):
-                        grandchild.terminate()
-        else:
-            for child in psutil.Process(process.pid).children(recursive=True):
-                print('process:{} , logger:{}, child:{}'.format(process.pid, PROGRAM_LOGGER.pid, child))
-                if child.pid != process.pid and child.pid != PROGRAM_LOGGER.pid:
-                    print('terminated: {}'.format(child))
-                    child.terminate()
 
-        _, pending = yield from asyncio.wait(
-            set([process.wait()]), timeout=3)
-
-        # TODO remove copy and paste code
-        if pending:
+        def children():
             if platform.system() == 'Windows':
                 for child in psutil.Process(process.pid).children():
-                    print(child.name())
-                    if 'cmd.exe' in child.name():
-                        print(child)
                         for grandchild in child.children(recursive=True):
-                            grandchild.kill()
+                            yield grandchild
             else:
                 for child in psutil.Process(process.pid).children(recursive=True):
-                    print('process:{} , logger:{}, child:{}'.format(process.pid, PROGRAM_LOGGER.pid, child))
                     if child.pid != process.pid and child.pid != PROGRAM_LOGGER.pid:
-                        print('terminated: {}'.format(child))
-                        child.kill()
+                        yield child
 
-        yield from asyncio.wait(
-            set([process.wait(), log_task]),
-            return_when=asyncio.ALL_COMPLETED,
-        )
+        for child in children():
+            child.terminate()
+            print('terminated: {}'.format(child))
+
+        _, pending = yield from asyncio.wait({process.wait()}, timeout=3)
+
+        if pending:
+            for child in children():
+                child.kill()
+                print('killed: {}'.format(child))
+
+            yield from asyncio.wait({process.wait(), log_task}, return_when=asyncio.ALL_COMPLETED,)
 
     if platform.system() == 'Windows':
         os.remove(misc_file_path + '.bat')
@@ -237,22 +230,7 @@ def execute(own_uuid, path, arguments):
 @Rpc.method
 @asyncio.coroutine
 def get_log(target_uuid):
-    file_name = None
-    for entry in os.listdir(LOGGER.logdir):
-        if target_uuid in entry and '.log' in entry:
-            file_name = entry
-            break
-
-    if file_name is None:
-        raise FileNotFoundError('log does not exist')
-
-    log = b''
-    with open(
-            file=os.path.join(LOGGER.logdir, file_name),
-            mode='rb') as log_file:
-        for line in log_file.readlines():
-            log += line
-
+    log = LOGGER.program_loggers[target_uuid].get_log()
     return {'log': log.decode(), 'uuid': target_uuid}
 
 
