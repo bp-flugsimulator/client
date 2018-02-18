@@ -191,7 +191,7 @@ class TestCommands(EventLoopTestCase):
         if os.name is 'nt':
             return_code = '15'
         else:
-            return_code = '144'
+            return_code = '137'  # TODO why not -9 ???
 
         @asyncio.coroutine
         def create_and_cancel_task():
@@ -242,8 +242,8 @@ class TestCommands(EventLoopTestCase):
             call_log = 'call {}  {}'.format(prog, args[0])
             excpected_log = [b'0', b'\r', b'\n', b'1', b'\r', b'\n', b'']
         else:
-            prog = 'bash'
-            args = ['-c', 'sleep 3 & echo 0& sleep 1 & echo 1']
+            prog = '/bin/bash'
+            args = ['-c', '"sleep 3; echo 0; sleep 1; echo 1"']
             call_log = ''
             excpected_log = [b'0', b'\n', b'1', b'\n', b'']
         uuid = uuid4().hex

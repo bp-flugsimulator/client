@@ -86,15 +86,18 @@ def online():
     """
     pass
 
+
 @Rpc.method
 @asyncio.coroutine
 def enable_logging(uuid):
     yield from LOGGER.program_loggers[uuid].enable_remote()
 
+
 @Rpc.method
 @asyncio.coroutine
 def disable_logging(uuid):
     yield from LOGGER.program_loggers[uuid].disable_remote()
+
 
 @Rpc.method
 @asyncio.coroutine
@@ -138,7 +141,7 @@ def execute(own_uuid, path, arguments):
         if platform.system() == 'Windows':
             with open(misc_file_path + '.bat', mode='w') as execute_file:
                 execute_file.write('call {path} {args}'.format(
-                    path= ('"' + path + '"') if ' ' in path else path,
+                    path=('"' + path + '"') if ' ' in path else path,
                     args=reduce(lambda r, l: r + ' ' + l, arguments, ''),
                 ))
                 execute_file.write('{}@echo off'.format(os.linesep))
@@ -191,17 +194,21 @@ def execute(own_uuid, path, arguments):
                 cwd=str(PurePath(path).parent),
             )
 
-        yield from asyncio.wait({process.wait(), log_task},return_when=asyncio.ALL_COMPLETED,)
+        yield from asyncio.wait(
+            {process.wait(), log_task},
+            return_when=asyncio.ALL_COMPLETED,
+        )
 
     except asyncio.CancelledError:
 
         def children():
             if platform.system() == 'Windows':
                 for child in psutil.Process(process.pid).children():
-                        for grandchild in child.children(recursive=True):
-                            yield grandchild
+                    for grandchild in child.children(recursive=True):
+                        yield grandchild
             else:
-                for child in psutil.Process(process.pid).children(recursive=True):
+                for child in psutil.Process(
+                        process.pid).children(recursive=True):
                     if child.pid != process.pid and child.pid != PROGRAM_LOGGER.pid:
                         yield child
 
@@ -216,7 +223,10 @@ def execute(own_uuid, path, arguments):
                 child.kill()
                 print('killed: {}'.format(child))
 
-            yield from asyncio.wait({process.wait(), log_task}, return_when=asyncio.ALL_COMPLETED,)
+            yield from asyncio.wait(
+                {process.wait(), log_task},
+                return_when=asyncio.ALL_COMPLETED,
+            )
 
     if platform.system() == 'Windows':
         os.remove(misc_file_path + '.bat')

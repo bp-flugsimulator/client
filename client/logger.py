@@ -94,6 +94,7 @@ class ProgramLogger:
         with self.__lock:
             yield from self.__ws_connection.close()
 
+
 class ClientLogger:
     """
     class used to manage logging

@@ -3,7 +3,7 @@ from sys import stdin, stdout
 from socket import socket, AF_INET, SOCK_STREAM
 from os import getpid, linesep
 
-parser = ArgumentParser() 
+parser = ArgumentParser()
 parser.add_argument('--port', type=int, help='port where the log is send to')
 args = parser.parse_args()
 
