@@ -19,13 +19,16 @@ from shutil import rmtree
 
 from datetime import datetime
 
+from utils import Status
+
 
 class ProgramLogger:
     """
     class used for logging one program
     """
 
-    def __init__(self, path, port, max_file_size, url):
+    def __init__(self, uuid,path, port, max_file_size, url):
+        self.__uuid = uuid
         self.__port = port
         self.__pid = 0
         self.__path = path
@@ -60,7 +63,9 @@ class ProgramLogger:
                         logfile.write(buffer)
                         logfile.flush()
                         if self.__ws_connection:
-                            yield from self.__ws_connection.send(buffer)
+                            status = Status.ok(buffer.decode())
+                            status.uuid = self.__uuid
+                            yield from self.__ws_connection.send(status.to_json())
             writer.close()
             if self.__ws_connection:
                 self.disable_remote()
@@ -90,7 +95,9 @@ class ProgramLogger:
         with self.__lock:
             with open(self.__path, mode='rb') as logfile:
                 data = logfile.read()
-                yield from self.__ws_connection.send(data)
+                status = Status.ok(data.decode())
+                status.uuid = self.__uuid
+                yield from self.__ws_connection.send(status.to_json())
 
     @asyncio.coroutine
     def disable_remote(self):
@@ -133,6 +140,7 @@ class ClientLogger:
             try:
                 port = randrange(49152, 65535)
                 self.__program_loggers[uuid] = ProgramLogger(
+                    uuid,
                     join(self.__logdir, file_name),
                     port,
                     max_file_size,

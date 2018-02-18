@@ -440,11 +440,12 @@ class TestCommands(EventLoopTestCase):
             @asyncio.coroutine
             def websocket_handler(websocket, path):
                 self.assertEqual('/logs', path)
-                line = yield from websocket.recv()
-                self.assertIn(call_log, str(line))
+                json = yield from websocket.recv()
+                self.assertIn(call_log, Status.from_json(json).payload)
                 for elem in excpected_log:
-                    byte = yield from websocket.recv()
-                    self.assertEqual(elem, byte)
+                    json = yield from websocket.recv()
+                    status = Status.from_json(json)
+                    self.assertEqual(elem, status.payload.encode())
                 finished.set_result(None)
 
             server_handle = yield from websockets.serve(websocket_handler, host='127.0.0.1', port=8750)
