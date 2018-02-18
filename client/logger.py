@@ -27,10 +27,11 @@ class ProgramLogger:
     class used for logging one program
     """
 
-    def __init__(self, uuid,path, port, max_file_size, url):
+    def __init__(self, pid_on_master,uuid, path, port, max_file_size, url):
         self.__uuid = uuid
         self.__port = port
         self.__pid = 0
+        self.__pid_on_master = pid_on_master
         self.__path = path
         self.__max_file_size = max_file_size
         self.__url = url
@@ -58,17 +59,16 @@ class ProgramLogger:
             self.__pid = int(pid)
             with open(self.__path, mode='wb') as logfile:
                 while not reader.at_eof():
-                    buffer = yield from reader.read(1)
+                    buffer = yield from reader.readline()
                     with self.__lock:
                         logfile.write(buffer)
                         logfile.flush()
                         if self.__ws_connection:
-                            status = Status.ok(buffer.decode())
+                            message = {'log': buffer.decode(), 'pid':self.__pid_on_master}
+                            status = Status.ok(message)
                             status.uuid = self.__uuid
                             yield from self.__ws_connection.send(status.to_json())
             writer.close()
-            if self.__ws_connection:
-                self.disable_remote()
             finished.set_result(True)
 
         server_coroutine = asyncio.start_server(
@@ -95,7 +95,8 @@ class ProgramLogger:
         with self.__lock:
             with open(self.__path, mode='rb') as logfile:
                 data = logfile.read()
-                status = Status.ok(data.decode())
+                message = {'log': data.decode(), 'pid':self.__pid_on_master}
+                status = Status.ok(message)
                 status.uuid = self.__uuid
                 yield from self.__ws_connection.send(status.to_json())
 
@@ -135,11 +136,12 @@ class ClientLogger:
         if not isdir(join(getcwd(), 'logs')):
             mkdir('logs')
 
-    def add_program_logger(self, uuid, file_name, max_file_size):
+    def add_program_logger(self, pid, uuid, file_name, max_file_size):
         while True:
             try:
                 port = randrange(49152, 65535)
                 self.__program_loggers[uuid] = ProgramLogger(
+                    pid,
                     uuid,
                     join(self.__logdir, file_name),
                     port,

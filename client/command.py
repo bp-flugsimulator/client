@@ -89,35 +89,35 @@ def online():
 
 @Rpc.method
 @asyncio.coroutine
-def enable_logging(uuid):
+def enable_logging(target_uuid):
     """
     Enables logging over websockets on the path '/logs'
 
     Arguments
     ---------
-    uuid: string
+    target_uuid: string
         uuid of the command for with logging gets enabled
     """
-    yield from LOGGER.program_loggers[uuid].enable_remote()
+    yield from LOGGER.program_loggers[target_uuid].enable_remote()
 
 
 @Rpc.method
 @asyncio.coroutine
-def disable_logging(uuid):
+def disable_logging(target_uuid):
     """
     Disables logging over websockets on the path '/logs'
 
     Arguments
     ---------
-    uuid: string
+    target_uuid: string
         uuid of the command for with logging gets disabled
     """
-    yield from LOGGER.program_loggers[uuid].disable_remote()
+    yield from LOGGER.program_loggers[target_uuid].disable_remote()
 
 
 @Rpc.method
 @asyncio.coroutine
-def execute(own_uuid, path, arguments):
+def execute(pid, own_uuid, path, arguments):
     """
     Executes a subprocess and returns the exit code.
 
@@ -149,7 +149,7 @@ def execute(own_uuid, path, arguments):
     misc_file_name = '{}-{}'.format(PurePath(path).parts[-1], own_uuid)
     misc_file_path = os.path.join(LOGGER.logdir, misc_file_name)
 
-    LOGGER.add_program_logger(own_uuid, misc_file_name + '.log', 1048576)
+    LOGGER.add_program_logger(pid, own_uuid, misc_file_name + '.log', 1048576)
     PROGRAM_LOGGER = LOGGER.program_loggers[own_uuid]
     log_task = asyncio.get_event_loop().create_task(PROGRAM_LOGGER.run())
 
@@ -169,7 +169,7 @@ def execute(own_uuid, path, arguments):
             startupinfo.wShowWindow = 6
 
             # TODO 2>&1 blocks :() the input
-            command = """call {misc_file_path}.bat 2>&1 | {python} {tee} --port {port}""".format(
+            command = """call {misc_file_path}.bat | {python} {tee} --port {port}""".format(
                 python=sys.executable,
                 tee=os.path.join(os.getcwd(), 'applications', 'tee.py'),
                 misc_file_path=misc_file_path,
