@@ -17,4 +17,4 @@ def signal_handler(sig, _stack):
 for sig in signals():
     signal.signal(sig, signal_handler)
 
-sleep(10)
+sleep(100)
