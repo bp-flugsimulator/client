@@ -12,6 +12,7 @@ def signals():
 
 def signal_handler(sig, _stack):
     print('got signal {}'.format(sig))
+    sleep(100)
 
 
 for sig in signals():

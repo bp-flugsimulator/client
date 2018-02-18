@@ -90,12 +90,28 @@ def online():
 @Rpc.method
 @asyncio.coroutine
 def enable_logging(uuid):
+    """
+    Enables logging over websockets on the path '/logs'
+
+    Arguments
+    ---------
+    uuid: string
+        uuid of the command for with logging gets enabled
+    """
     yield from LOGGER.program_loggers[uuid].enable_remote()
 
 
 @Rpc.method
 @asyncio.coroutine
 def disable_logging(uuid):
+    """
+    Disables logging over websockets on the path '/logs'
+
+    Arguments
+    ---------
+    uuid: string
+        uuid of the command for with logging gets disabled
+    """
     yield from LOGGER.program_loggers[uuid].disable_remote()
 
 

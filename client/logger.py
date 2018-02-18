@@ -44,6 +44,9 @@ class ProgramLogger:
 
     @asyncio.coroutine
     def run(self):
+        """
+        
+        """
         finished = Future()
 
         @asyncio.coroutine
