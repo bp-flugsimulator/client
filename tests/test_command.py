@@ -5,6 +5,7 @@ Unit tests for the module client.command.
 import unittest
 import asyncio
 import os
+import shutil
 
 from os import remove, getcwd
 from os.path import join, isfile
@@ -358,8 +359,8 @@ class FileCommandFilesTests(FileSystemTestCase):
         (source, _, _) = self.provideFile("test.abc")
         destination_path = self.provideDirectory("this_is_my_folder")
         (destination, _, _) = self.provideFile("this_is_my_folder/test.abc")
-        (backup, _, _) = self.provideFile("this_is_my_folder/test.abc" +
-                                          self.backup_ending)
+        (backup, _, _) = self.provideFile(
+            "this_is_my_folder/test.abc" + self.backup_ending)
 
         self.assertFilesArePresent(source, destination, backup)
         self.assertDirsArePresent(destination_path)
@@ -416,8 +417,8 @@ class FileCommandFilesTests(FileSystemTestCase):
         (source, _, hash_source) = self.provideFile("test.abc")
         destination_path = self.provideDirectory("this_is_my_folder")
         (destination, _, _) = self.provideFile("this_is_my_folder/test.abc")
-        backup = self.joinPath("this_is_my_folder/test.abc" +
-                               self.backup_ending)
+        backup = self.joinPath(
+            "this_is_my_folder/test.abc" + self.backup_ending)
 
         self.assertFilesArePresent(source, destination)
         self.assertFilesAreNotPresent(backup)
@@ -457,8 +458,8 @@ class FileCommandFilesTests(FileSystemTestCase):
             data_destination,
             _,
         ) = self.provideFile("this_is_my_folder/test.abc")
-        backup = self.joinPath("this_is_my_folder/test.abc" +
-                               self.backup_ending)
+        backup = self.joinPath(
+            "this_is_my_folder/test.abc" + self.backup_ending)
 
         self.assertFilesArePresent(source, destination)
         self.assertDirsArePresent(destination_path)
@@ -805,8 +806,8 @@ class FileCommandDirsTests(FileSystemTestCase):
         destination_path = self.provideDirectory("this_is_my_folder")
         (destination, _,
          _) = self.provideFilledDirectory("this_is_my_folder/test.abc")
-        backup = self.joinPath("this_is_my_folder/test.abc" +
-                               self.backup_ending)
+        backup = self.joinPath(
+            "this_is_my_folder/test.abc" + self.backup_ending)
 
         self.assertDirsArePresent(source, destination, destination_path)
         self.assertDirsAreNotPresent(backup)
@@ -845,8 +846,8 @@ class FileCommandDirsTests(FileSystemTestCase):
             _,
         ) = self.provideFilledDirectory("this_is_my_folder/test.abc")
 
-        backup = self.joinPath("this_is_my_folder/test.abc" +
-                               self.backup_ending)
+        backup = self.joinPath(
+            "this_is_my_folder/test.abc" + self.backup_ending)
 
         self.assertDirsArePresent(source, destination, destination_path)
 
@@ -888,7 +889,7 @@ class FileCommandDirsTests(FileSystemTestCase):
             backup,
             files_backup,
             _,
-        ) = self.provideFile("test.abc.link" + self.backup_ending)
+        ) = self.provideFilledDirectory("test.abc.link" + self.backup_ending)
 
         self.assertDirsArePresent(source, backup)
         self.assertDirsAreNotPresent(destination)
@@ -906,7 +907,7 @@ class FileCommandDirsTests(FileSystemTestCase):
         self.assertDirsArePresent(source, destination)
         self.assertDirsAreNotPresent(backup)
 
-        self.assertDirEqual(destination, files_backup)
+        self.assertDirEqual(destination, list(map(lambda f: f[2], files_backup)))
 
     def test_filesystem_restore_no_destination(self):
         (source, _, hash_source) = self.provideFilledDirectory("test.abc")
@@ -974,10 +975,15 @@ class FileCommandDirsTests(FileSystemTestCase):
         self.assertDirsArePresent(source, destination)
         self.assertDirsAreNotPresent(backup)
 
-        raise ValueError("Unimplemented!!")
+        # create a new file in source and destination
+        new_file_name = "12345678901234567890123456"
+        (new_file, _, _) = self.provideFile(
+            os.path.join(destination, new_file_name))
 
-        # with open(destination, 'w+') as clone:
-        #     clone.write("test")
+        shutil.copy2(new_file,
+                     self.joinPath(os.path.join(source, new_file_name)))
+
+        self.assertDirsEqual(source, destination)
 
         self.loop.run_until_complete(
             client.command.filesystem_restore(
