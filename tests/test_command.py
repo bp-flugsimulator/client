@@ -152,7 +152,7 @@ class TestCommands(EventLoopTestCase):
         result = self.loop.run_until_complete(
             client.command.chain_execution(commands=[{
                 'method': 'execute',
-                'uuid': 0,
+                'uuid': 'thisisunique',
                 'arguments': {
                     'path': prog,
                     'arguments': args
@@ -165,7 +165,7 @@ class TestCommands(EventLoopTestCase):
                 'method': 'execute',
                 'result': 0,
             },
-            0,
+            'thisisunique',
         )
 
         self.assertEqual(Status(**result[0]), response)
@@ -179,20 +179,21 @@ class TestCommands(EventLoopTestCase):
             args = ["-c", "echo $(date)"]
 
         result = self.loop.run_until_complete(
-            client.command.chain_execution(commands=[{
-                'method': 'execute',
-                'uuid': 0,
-                'arguments': {
-                    'path': prog,
-                },
-            }, {
-                'method': 'execute',
-                'uuid': 0,
-                'arguments': {
-                    'path': prog,
-                    'arguments': args
-                },
-            }]))
+            client.command.chain_execution(
+                commands=[{
+                    'method': 'execute',
+                    'uuid': 'uniqueidforfirst',
+                    'arguments': {
+                        'path': prog,
+                    },
+                }, {
+                    'method': 'execute',
+                    'uuid': 'uniqueidforsecond',
+                    'arguments': {
+                        'path': prog,
+                        'arguments': args
+                    },
+                }]))
 
         response1 = Status(
             Status.ID_ERR,
@@ -202,7 +203,7 @@ class TestCommands(EventLoopTestCase):
                 'result':
                 "execute() missing 1 required positional argument: 'arguments'",
             },
-            0,
+            'uniqueidforfirst',
         )
 
         response2 = Status(
@@ -213,7 +214,7 @@ class TestCommands(EventLoopTestCase):
                 'result':
                 'Could not execute because earlier command was not successful.',
             },
-            0,
+            'uniqueidforsecond',
         )
 
         self.assertEqual(Status(**result[0]), response1)
@@ -359,8 +360,8 @@ class FileCommandFilesTests(FileSystemTestCase):
         (source, _, _) = self.provideFile("test.abc")
         destination_path = self.provideDirectory("this_is_my_folder")
         (destination, _, _) = self.provideFile("this_is_my_folder/test.abc")
-        (backup, _, _) = self.provideFile(
-            "this_is_my_folder/test.abc" + self.backup_ending)
+        (backup, _, _) = self.provideFile("this_is_my_folder/test.abc" +
+                                          self.backup_ending)
 
         self.assertFilesArePresent(source, destination, backup)
         self.assertDirsArePresent(destination_path)
@@ -417,8 +418,8 @@ class FileCommandFilesTests(FileSystemTestCase):
         (source, _, hash_source) = self.provideFile("test.abc")
         destination_path = self.provideDirectory("this_is_my_folder")
         (destination, _, _) = self.provideFile("this_is_my_folder/test.abc")
-        backup = self.joinPath(
-            "this_is_my_folder/test.abc" + self.backup_ending)
+        backup = self.joinPath("this_is_my_folder/test.abc" +
+                               self.backup_ending)
 
         self.assertFilesArePresent(source, destination)
         self.assertFilesAreNotPresent(backup)
@@ -458,8 +459,8 @@ class FileCommandFilesTests(FileSystemTestCase):
             data_destination,
             _,
         ) = self.provideFile("this_is_my_folder/test.abc")
-        backup = self.joinPath(
-            "this_is_my_folder/test.abc" + self.backup_ending)
+        backup = self.joinPath("this_is_my_folder/test.abc" +
+                               self.backup_ending)
 
         self.assertFilesArePresent(source, destination)
         self.assertDirsArePresent(destination_path)
@@ -806,8 +807,8 @@ class FileCommandDirsTests(FileSystemTestCase):
         destination_path = self.provideDirectory("this_is_my_folder")
         (destination, _,
          _) = self.provideFilledDirectory("this_is_my_folder/test.abc")
-        backup = self.joinPath(
-            "this_is_my_folder/test.abc" + self.backup_ending)
+        backup = self.joinPath("this_is_my_folder/test.abc" +
+                               self.backup_ending)
 
         self.assertDirsArePresent(source, destination, destination_path)
         self.assertDirsAreNotPresent(backup)
@@ -846,8 +847,8 @@ class FileCommandDirsTests(FileSystemTestCase):
             _,
         ) = self.provideFilledDirectory("this_is_my_folder/test.abc")
 
-        backup = self.joinPath(
-            "this_is_my_folder/test.abc" + self.backup_ending)
+        backup = self.joinPath("this_is_my_folder/test.abc" +
+                               self.backup_ending)
 
         self.assertDirsArePresent(source, destination, destination_path)
 
@@ -907,7 +908,8 @@ class FileCommandDirsTests(FileSystemTestCase):
         self.assertDirsArePresent(source, destination)
         self.assertDirsAreNotPresent(backup)
 
-        self.assertDirEqual(destination, list(map(lambda f: f[2], files_backup)))
+        self.assertDirEqual(destination,
+                            list(map(lambda f: f[2], files_backup)))
 
     def test_filesystem_restore_no_destination(self):
         (source, _, hash_source) = self.provideFilledDirectory("test.abc")

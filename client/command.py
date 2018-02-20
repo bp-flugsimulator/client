@@ -396,7 +396,7 @@ def filesystem_move(
         return hash_file(destination_path)
 
 
-@Helper.function
+@Rpc.method
 @asyncio.coroutine
 def filesystem_restore(
         source_path,
