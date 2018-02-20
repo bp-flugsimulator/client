@@ -1072,33 +1072,6 @@ class FileCommandTypesTests(FileSystemTestCase):
         self.assertDirsArePresent(source)
         self.assertFilesAreNotPresent(destination)
 
-    def test_filesystem_wrong_source_path_object(self):
-        self.assertRaisesRegex(
-            ValueError,
-            "source path",
-            self.loop.run_until_complete,
-            client.command.filesystem_restore(1, "file", "file.txt", "file",
-                                              "ende", "hash"),
-        )
-
-    def test_filesystem_wrong_destination_path_object(self):
-        self.assertRaisesRegex(
-            ValueError,
-            "destination path",
-            self.loop.run_until_complete,
-            client.command.filesystem_restore("file.txt", "file", 1, "file",
-                                              "ende", "hash"),
-        )
-
-    def test_filesystem_wrong_ending_object(self):
-        self.assertRaisesRegex(
-            ValueError,
-            "file ending",
-            self.loop.run_until_complete,
-            client.command.filesystem_restore("file.txt", "file", "ende",
-                                              "file", 1, "hash"),
-        )
-
     def test_filesystem_wrong_source_type_object(self):
         self.assertRaisesRegex(
             ValueError,
@@ -1115,12 +1088,4 @@ class FileCommandTypesTests(FileSystemTestCase):
             self.loop.run_until_complete,
             client.command.filesystem_restore("file.txt", "file", "ende",
                                               "none", "string", "hash"),
-        )
-
-    def test_filesystem_restore_wrong_hash_object(self):
-        self.assertRaises(
-            ValueError,
-            self.loop.run_until_complete,
-            client.command.filesystem_restore("file.txt", "file", "ende",
-                                              "file", "ende", 1),
         )

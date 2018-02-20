@@ -14,6 +14,7 @@ from pathlib import PurePath
 
 from utils import Rpc, Command, Status
 import utils.rpc
+import utils.typecheck
 
 PATH_TYPE_SET = ['file', 'dir']
 
@@ -135,12 +136,10 @@ def filesystem_type_check(
     """
     Check the types of the shared input of filesystem_move and filesystem_restore.
     """
-    if not isinstance(source_path, str):
-        raise ValueError("source path is not a string!")
-    if not isinstance(destination_path, str):
-        raise ValueError("destination path is not a string!")
-    if not isinstance(backup_ending, str):
-        raise ValueError("Backup file ending is not a string!")
+    utils.typecheck.ensure_type("source_path", source_path, str)
+    utils.typecheck.ensure_type("destination_path", destination_path, str)
+    utils.typecheck.ensure_type("backup_ending", backup_ending, str)
+
     if not source_type in PATH_TYPE_SET:
         raise ValueError(
             "The source_type has to be one of {}".format(PATH_TYPE_SET))
@@ -419,8 +418,7 @@ def filesystem_restore(
         backup_ending: the file ending for backup files
 
     """
-    if not isinstance(hash_value, str):
-        raise ValueError("hash value is not a string!")
+    utils.typecheck.ensure_type("hash_value", hash_value, str)
 
     (
         source_path,
