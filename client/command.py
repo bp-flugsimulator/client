@@ -59,7 +59,7 @@ def remove_trailing_path_seperator(path):
     -------
         string
     """
-    if path and path[-1] == os.path.sep:
+    if path and (path[-1] == '\\' or path[-1] == '/'):
         return path[:-1]
     else:
         return path
