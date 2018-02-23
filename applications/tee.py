@@ -10,9 +10,10 @@ args = parser.parse_args()
 SOCKET = socket(AF_INET, SOCK_STREAM)
 SOCKET.connect(('localhost', args.port))
 SOCKET.send((str(getpid()) + linesep).encode())
+SOCKET.setblocking(0)
 
 buffer = stdin.buffer.read(1)
-while buffer.decode() is not '':
+while buffer != b'':
     stdout.buffer.write(buffer)
     stdout.buffer.flush()
     SOCKET.send(buffer)

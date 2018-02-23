@@ -6,11 +6,11 @@ import asyncio
 
 from sys import stdout
 
-from os import listdir, mkdir, getcwd
-from os.path import join, isdir
+from os import listdir, mkdir, getcwd, rename
+from os.path import join, isdir, isfile
 import websockets
 
-from asyncio import Future
+from asyncio import Future, Event
 from threading import Lock
 
 from random import randrange
@@ -22,13 +22,38 @@ from datetime import datetime
 from utils import Status
 
 
+class RotatingFile:
+    def __init__(self, path, max_file_size=(1 << 20), mode='wb'):
+        self.__path = path
+        self.__max_file_size = max_file_size
+        self.__mode = mode
+        self.__pos = 0
+        self.__file = open(path, mode=mode)
+
+    def write(self, input):
+        if self.__pos < self.__max_file_size:
+            self.__pos += 1
+        else:
+            self.__file.close()
+            rename(self.__path, '{}.1'.format(self.__path))
+            self.__file = open(self.__path, mode=self.__mode)
+            self.__pos = 0
+
+        self.__file.write(input)
+
+    def flush(self):
+        self.__file.flush()
+
+    def close(self):
+        self.__file.close()
+
+
 class ProgramLogger:
     """
     class used for logging one program
     """
 
-    def __init__(self, pid_on_master,uuid, path, port, max_file_size, url):
-        self.__uuid = uuid
+    def __init__(self, pid_on_master, path, port, max_file_size, url):
         self.__port = port
         self.__pid = 0
         self.__pid_on_master = pid_on_master
@@ -36,6 +61,8 @@ class ProgramLogger:
         self.__max_file_size = max_file_size
         self.__url = url
         self.__ws_connection = None
+        self.__ws_buffer = b''
+        self.__ws_buffer_has_content = Event(loop=asyncio.get_event_loop())
         self.__lock = Lock()
 
     @property
@@ -48,28 +75,26 @@ class ProgramLogger:
 
     @asyncio.coroutine
     def run(self):
-        """
-        
-        """
-        finished = Future()
+        finished = Event(loop=asyncio.get_event_loop())
 
         @asyncio.coroutine
         def handle_connection(reader, writer):
             pid = yield from reader.readline()
             self.__pid = int(pid)
-            with open(self.__path, mode='wb') as logfile:
-                while not reader.at_eof():
-                    buffer = yield from reader.readline()
-                    with self.__lock:
-                        logfile.write(buffer)
-                        logfile.flush()
-                        if self.__ws_connection:
-                            message = {'log': buffer.decode(), 'pid':self.__pid_on_master}
-                            status = Status.ok(message)
-                            status.uuid = self.__uuid
-                            yield from self.__ws_connection.send(status.to_json())
+            log_file = RotatingFile(self.__path, self.__max_file_size)
+
+            while not reader.at_eof():
+                buffer = yield from reader.read(1)
+                with self.__lock:
+                    log_file.write(buffer)
+                    log_file.flush()
+                    if self.__ws_connection:
+                        self.__ws_buffer += buffer
+                        self.__ws_buffer_has_content.set()
+
+            log_file.close()
             writer.close()
-            finished.set_result(True)
+            finished.set()
 
         server_coroutine = asyncio.start_server(
             handle_connection,
@@ -79,31 +104,57 @@ class ProgramLogger:
         )
         server = yield from asyncio.get_event_loop().create_task(
             server_coroutine)
-        yield from finished
+        yield from finished.wait()
         server.close()
         yield from server.wait_closed()
-
-    def get_log(self):
-        with open(self.__path, mode='rb') as logfile:
-            data = logfile.read()
-            return data
 
     @asyncio.coroutine
     def enable_remote(self):
         self.__ws_connection = yield from websockets.connect(self.__url)
-
         with self.__lock:
             with open(self.__path, mode='rb') as logfile:
                 data = logfile.read()
-                message = {'log': data.decode(), 'pid':self.__pid_on_master}
+                data = data.decode()
+                message = {'log': data, 'pid': self.__pid_on_master}
                 status = Status.ok(message)
-                status.uuid = self.__uuid
-                yield from self.__ws_connection.send(status.to_json())
+
+        yield from self.__ws_connection.send(status.to_json())
+        yield from self.__ws_connection.recv()
+
+        while True:
+            yield from self.__ws_buffer_has_content.wait()
+            with self.__lock:
+                message = {
+                    'log': self.__ws_buffer.decode(),
+                    'pid': self.__pid_on_master
+                }
+                self.__ws_buffer = b''
+                self.__ws_buffer_has_content.clear()
+            try:
+                yield from self.__ws_connection.send(
+                    Status.ok(message).to_json())
+                yield from self.__ws_connection.recv()
+            except websockets.exceptions.ConnectionClosed:
+                break
+
+            if message['log'] == b''.decode():
+                break
 
     @asyncio.coroutine
     def disable_remote(self):
         with self.__lock:
             yield from self.__ws_connection.close()
+
+    def get_log(self):
+        data = b''
+        with open(self.__path, mode='rb') as logfile:
+            data = logfile.read()
+
+        if isfile(self.__path + '.1'):
+            with open(self.__path, mode='rb') as logfile:
+                data += logfile.read()
+
+        return data
 
 
 class ClientLogger:
@@ -142,7 +193,6 @@ class ClientLogger:
                 port = randrange(49152, 65535)
                 self.__program_loggers[uuid] = ProgramLogger(
                     pid,
-                    uuid,
                     join(self.__logdir, file_name),
                     port,
                     max_file_size,

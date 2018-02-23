@@ -168,8 +168,7 @@ def execute(pid, own_uuid, path, arguments):
             startupinfo.dwFlags = subprocess.STARTF_USESHOWWINDOW
             startupinfo.wShowWindow = 6
 
-            # TODO 2>&1 blocks :() the input
-            command = """call {misc_file_path}.bat | {python} {tee} --port {port}""".format(
+            command = """call {misc_file_path}.bat 2>&1 | {python} {tee} --port {port}""".format(
                 python=sys.executable,
                 tee=os.path.join(os.getcwd(), 'applications', 'tee.py'),
                 misc_file_path=misc_file_path,
@@ -206,7 +205,10 @@ def execute(pid, own_uuid, path, arguments):
             os.chmod(misc_file_path + '.sh', mode)
 
             process = yield from asyncio.create_subprocess_exec(
-                misc_file_path + '.sh',
+                *[
+                    '/bin/xterm', '-e', misc_file_path + '.sh', '-geometry',
+                    '80'
+                ],
                 cwd=str(PurePath(path).parent),
             )
 
@@ -225,7 +227,9 @@ def execute(pid, own_uuid, path, arguments):
             else:
                 for child in psutil.Process(
                         process.pid).children(recursive=True):
-                    if child.pid != process.pid and child.pid != PROGRAM_LOGGER.pid:
+                    if (child.pid != process.pid
+                            and child.pid != PROGRAM_LOGGER.pid
+                            and child.name() != misc_file_name[:15]):
                         yield child
 
         for child in children():
@@ -302,8 +306,10 @@ def chain_execution(commands):
 
                 ret = Status(
                     Status.ID_OK,
-                    {'method': cmd.method,
-                     'result': ret},
+                    {
+                        'method': cmd.method,
+                        'result': ret
+                    },
                     cmd.uuid,
                 )
 
@@ -311,8 +317,10 @@ def chain_execution(commands):
             except Exception as err:
                 ret = Status(
                     Status.ID_ERR,
-                    {'method': cmd.method,
-                     'result': str(err)},
+                    {
+                        'method': cmd.method,
+                        'result': str(err)
+                    },
                     cmd.uuid,
                 )
 

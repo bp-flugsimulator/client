@@ -44,6 +44,7 @@ class EventLoopTestCase(unittest.TestCase):
         cls.loop.close()
         LOGGER.disable()
 
+
 class FileSystemTestCase(EventLoopTestCase):
     @classmethod
     def setUpClass(cls):
@@ -286,22 +287,27 @@ class TestCommands(EventLoopTestCase):
         self.assertRaises(
             ValueError,
             self.loop.run_until_complete,
-            client.command.execute(uuid4().hex, "calcs.exe",
-                                   "this is a arguments list"),
+            client.command.execute(
+                random.choice(string.digits),
+                uuid4().hex, "calcs.exe", "this is a arguments list"),
         )
 
     def test_execution_wrong_prog_object(self):
         self.assertRaises(
             ValueError,
             self.loop.run_until_complete,
-            client.command.execute(uuid4().hex, ["calcs.exe"], []),
+            client.command.execute(
+                random.choice(string.digits),
+                uuid4().hex, ["calcs.exe"], []),
         )
 
     def test_execution_wrong_arguments_elements(self):
         self.assertRaises(
             ValueError,
             self.loop.run_until_complete,
-            client.command.execute(uuid4().hex, "calcs.exe", [1, 2, 34]),
+            client.command.execute(
+                random.choice(string.digits),
+                uuid4().hex, "calcs.exe", [1, 2, 34]),
         )
 
     def test_execution_echo_shell(self):
@@ -315,7 +321,9 @@ class TestCommands(EventLoopTestCase):
         self.assertEqual(
             '0',
             self.loop.run_until_complete(
-                client.command.execute(uuid4().hex, prog, args)),
+                client.command.execute(
+                    random.choice(string.digits),
+                    uuid4().hex, prog, args)),
         )
 
     def test_online(self):
@@ -331,7 +339,9 @@ class TestCommands(EventLoopTestCase):
 
         self.assertEqual('0',
                          self.loop.run_until_complete(
-                             client.command.execute(uuid4().hex,prog, [])))
+                             client.command.execute(
+                                 random.choice(string.digits),
+                                 uuid4().hex, prog, [])))
         self.assertTrue(isfile(join(path, 'test.txt')))
         remove(join(path, 'test.txt'))
 
@@ -348,7 +358,9 @@ class TestCommands(EventLoopTestCase):
         @asyncio.coroutine
         def create_and_cancel_task():
             task = self.loop.create_task(
-                client.command.execute(uuid4().hex, prog, args))
+                client.command.execute(
+                    random.choice(string.digits),
+                    uuid4().hex, prog, args))
             yield from asyncio.sleep(0.5)
             task.cancel()
             print("canceled task")
@@ -360,7 +372,7 @@ class TestCommands(EventLoopTestCase):
 
     def test_cancel_execution_with_kill(self):
         prog = sys.executable
-        args =  [join(getcwd(), 'applications', 'kill_me.py')]
+        args = [join(getcwd(), 'applications', 'kill_me.py')]
 
         if os.name is 'nt':
             return_code = '15'
@@ -370,7 +382,9 @@ class TestCommands(EventLoopTestCase):
         @asyncio.coroutine
         def create_and_cancel_task():
             task = self.loop.create_task(
-                client.command.execute(uuid4().hex, prog, args))
+                client.command.execute(
+                    random.choice(string.digits),
+                    uuid4().hex, prog, args))
             yield from asyncio.sleep(0.5)
             task.cancel()
             print("canceled task")
@@ -382,10 +396,15 @@ class TestCommands(EventLoopTestCase):
 
     def test_get_log(self):
         uuid = uuid4().hex
-        message = ''.join([random.choice(string.ascii_letters + string.digits) for n in range(32)])
+        message = ''.join([
+            random.choice(string.ascii_letters + string.digits)
+            for n in range(32)
+        ])
         self.assertEqual('0',
                          self.loop.run_until_complete(
-                             client.command.execute(uuid, 'echo', [message])))
+                             client.command.execute(
+                                 random.choice(string.digits), uuid, 'echo',
+                                 [message])))
 
         res = self.loop.run_until_complete(client.command.get_log(uuid))
         if os.name == 'nt':
@@ -418,8 +437,7 @@ class TestCommands(EventLoopTestCase):
         else:
             prog = '/bin/bash'
             args = ['-c', '"sleep 3; echo 0; sleep 1; echo 1"']
-            call_log = ''
-            excpected_log = [b'0', b'\n', b'1', b'\n', b'']
+            excpected_log = b'0\n1\n'
         uuid = uuid4().hex
 
         @asyncio.coroutine
@@ -430,7 +448,8 @@ class TestCommands(EventLoopTestCase):
         @asyncio.coroutine
         def start_execution():
             print('started execution')
-            yield from client.command.execute(uuid, prog, args)
+            yield from client.command.execute(
+                random.choice(string.digits), uuid, prog, args)
             print('finished execution')
 
         @asyncio.coroutine
@@ -440,15 +459,27 @@ class TestCommands(EventLoopTestCase):
             @asyncio.coroutine
             def websocket_handler(websocket, path):
                 self.assertEqual('/logs', path)
+                # receive log from file
                 json = yield from websocket.recv()
-                self.assertIn(call_log, Status.from_json(json).payload)
-                for elem in excpected_log:
+                log = Status.from_json(json).payload['log'].encode()
+                # ack
+                yield from websocket.send('')
+
+                #receive dynamic log
+                while True:
                     json = yield from websocket.recv()
-                    status = Status.from_json(json)
-                    self.assertEqual(elem, status.payload.encode())
+                    # ack
+                    yield from websocket.send('')
+                    msg = Status.from_json(json).payload['log'].encode()
+                    if msg == b'':
+                        break
+                    log += msg
+                self.assertEqual(excpected_log, log)
+                print('finished server')
                 finished.set_result(None)
 
-            server_handle = yield from websockets.serve(websocket_handler, host='127.0.0.1', port=8750)
+            server_handle = yield from websockets.serve(
+                websocket_handler, host='127.0.0.1', port=8750)
             yield from finished
             server_handle.close()
             yield from server_handle.wait_closed()
@@ -490,7 +521,8 @@ class TestCommands(EventLoopTestCase):
                 'method': 'execute',
                 'uuid': 0,
                 'arguments': {
-                    'own_uuid': 0,
+                    'pid': random.choice(string.digits),
+                    'own_uuid': uuid4().hex,
                     'path': prog,
                     'arguments': args
                 },
@@ -520,6 +552,7 @@ class TestCommands(EventLoopTestCase):
                 'method': 'execute',
                 'uuid': 0,
                 'arguments': {
+                    'pid': 1,
                     'own_uuid': 0,
                     'path': prog,
                 },
@@ -527,6 +560,7 @@ class TestCommands(EventLoopTestCase):
                 'method': 'execute',
                 'uuid': 1,
                 'arguments': {
+                    'pid': 1,
                     'own_uuid': 1,
                     'path': prog,
                     'arguments': args
@@ -699,8 +733,8 @@ class FileCommandTests(FileSystemTestCase):
         (source, _, _) = self.provideFile("test.abc")
         destination_path = self.provideDirectory("this_is_my_folder")
         (destination, _, _) = self.provideFile("this_is_my_folder/test.abc")
-        (backup, _, _) = self.provideFile("this_is_my_folder/test.abc" +
-                                          self.backup_ending)
+        (backup, _, _) = self.provideFile(
+            "this_is_my_folder/test.abc" + self.backup_ending)
 
         self.assertFilesArePresent(source, destination, backup)
         self.assertDirsArePresent(destination_path)

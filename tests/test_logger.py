@@ -1,6 +1,9 @@
 """
 This module contains tests for the logger.py module.
 """
+import random
+import string
+
 from unittest import TestCase
 
 from time import sleep
@@ -18,7 +21,7 @@ from client import logger
 from client.logger import ClientLogger
 
 
-class TestCommands(TestCase):
+class TestLogger(TestCase):
     FOLDER = join(
         getcwd(),
         'logs',
@@ -26,7 +29,7 @@ class TestCommands(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        super(TestCommands, cls).setUpClass()
+        super(TestLogger, cls).setUpClass()
         if not isdir(cls.FOLDER):
             mkdir(cls.FOLDER)
 
@@ -87,5 +90,6 @@ class TestCommands(TestCase):
 
     def test_add_program_logger(self):
         uuid = uuid4().hex
-        logger.LOGGER.add_program_logger(uuid, '{}.log'.format(uuid), 100)
+        logger.LOGGER.add_program_logger(
+            random.choice(string.digits), uuid, '{}.log'.format(uuid), 100)
         self.assertIn(uuid, logger.LOGGER.program_loggers)
