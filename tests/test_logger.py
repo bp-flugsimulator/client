@@ -159,6 +159,7 @@ class TestLogger(TestCase):
         logger.LOGGER.enable()
         logger.LOGGER.url = 'localhost:8050'
         uuid = uuid4().hex
+        print(uuid)
         logger.LOGGER.add_program_logger(
             random.choice(string.digits), uuid, '{}.log'.format(uuid), 100)
         self.assertIn(uuid, logger.LOGGER.program_loggers)

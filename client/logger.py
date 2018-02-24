@@ -7,7 +7,7 @@ import websockets
 
 from sys import stdout
 
-from os import listdir, mkdir, getcwd, rename
+from os import listdir, mkdir, getcwd, rename, remove
 from os.path import join, isdir, isfile
 
 from asyncio import Event
@@ -24,7 +24,10 @@ from utils import Status
 
 class RotatingFile:
     """
-    NOT THREAD SAFE
+    File which has a maximum file size. If the file exceeds this size one
+    backupfile is created (or the old one is replaced). 
+
+    ATTENTION!!! this class is not thread save.
     """
 
     def __init__(self, path, max_file_size=(1 << 20), mode='wb+'):
@@ -35,16 +38,33 @@ class RotatingFile:
         self.__file = open(self.__path, mode=self.__mode)
 
     def write(self, buffer):
+        """
+        Writes to the underling file. If this write operation sets the file size
+        over the threshold a new file is created and the old file gets backed up.
+
+        Argument:
+        buffer: string or byte 
+            content that gets written to the file
+        """
         if self.__pos + len(buffer) < self.__max_file_size:
             self.__pos += len(buffer)
         else:
             self.__file.close()
+            if isfile('{}.1'.format(self.__path)):
+                remove('{}.1'.format(self.__path))
             rename(self.__path, '{}.1'.format(self.__path))
             self.__file = open(self.__path, mode=self.__mode)
             self.__pos = 0
         self.__file.write(buffer)
 
     def read(self):
+        """
+        Reads from the underling file ignoring if it's opened or closed.
+
+        Returns
+        -------
+            string or bytes (dependend on the mode)
+        """
         backup_log = None
         if 'b' in self.__mode:
             mode = 'rb'
@@ -59,6 +79,7 @@ class RotatingFile:
             with open(self.__path, mode=mode) as log_file:
                 current_log = log_file.read()
         else:
+            self.__file.flush()
             self.__file.seek(0)
             current_log = self.__file.read()
 
@@ -67,10 +88,10 @@ class RotatingFile:
         else:
             return current_log
 
-    def flush(self):
-        self.__file.flush()
-
     def close(self):
+        """
+        Closes the underling file.
+        """
         self.__file.close()
 
 
@@ -90,7 +111,14 @@ class ProgramLogger:
         self.__ws_connection = None
         self.__ws_buffer = b''
         self.__ws_buffer_has_content = Event(loop=asyncio.get_event_loop())
+        self.__ws_finished = False
         self.__lock = Lock()
+
+
+    def disable(self):
+        with self.__lock:
+            self.__log_file.close()
+            self.__ws_buffer = b''
 
     @property
     def pid(self):
@@ -113,11 +141,12 @@ class ProgramLogger:
                 buffer = yield from reader.read(1)
                 with self.__lock:
                     self.__log_file.write(buffer)
-                    self.__log_file.flush()
+                    #self.__log_file.flush()
                     if self.__ws_connection:
                         self.__ws_buffer += buffer
                         self.__ws_buffer_has_content.set()
 
+            self.__ws_finished = True
             self.__log_file.close()
             writer.close()
             finished.set()
@@ -163,6 +192,9 @@ class ProgramLogger:
 
             if message['log'] == b''.decode():
                 break
+
+            if self.__ws_finished:
+                self.__ws_buffer_has_content.set()
 
     @asyncio.coroutine
     def disable_remote(self):
@@ -301,6 +333,9 @@ class ClientLogger:
 
             self.__file_ch.close()
             self.__stream_ch.close()
+
+            for (_, program_logger) in self.__program_loggers.items():
+                program_logger.disable()
 
 
 LOGGER = ClientLogger()

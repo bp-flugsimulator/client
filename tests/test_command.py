@@ -466,11 +466,12 @@ class TestCommands(EventLoopTestCase):
                 while True:
                     json = yield from websocket.recv()
                     # ack
-                    yield from websocket.send('')
                     msg = Status.from_json(json).payload['log'].encode()
+                    log += msg
                     if msg == b'':
                         break
-                    log += msg
+                    else:
+                        yield from websocket.send('')
                 self.assertIn(expected_log, log)
                 print('finished server')
                 finished.set_result(None)
