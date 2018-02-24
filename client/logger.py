@@ -3,14 +3,14 @@ This module contains a class which manages logging.
 """
 import logging
 import asyncio
+import websockets
 
 from sys import stdout
 
 from os import listdir, mkdir, getcwd, rename
 from os.path import join, isdir, isfile
-import websockets
 
-from asyncio import Future, Event
+from asyncio import Event
 from threading import Lock
 
 from random import randrange
@@ -23,23 +23,49 @@ from utils import Status
 
 
 class RotatingFile:
-    def __init__(self, path, max_file_size=(1 << 20), mode='wb'):
+    """
+    NOT THREAD SAFE
+    """
+    def __init__(self, path, max_file_size=(1 << 20), mode='wb+'):
         self.__path = path
-        self.__max_file_size = max_file_size
         self.__mode = mode
+        self.__max_file_size = max_file_size
         self.__pos = 0
-        self.__file = open(path, mode=mode)
+        self.__file = open(self.__path, mode=self.__mode)
 
-    def write(self, input):
-        if self.__pos < self.__max_file_size:
-            self.__pos += 1
+    def write(self, buffer):
+        if self.__pos + len(buffer) < self.__max_file_size:
+            self.__pos += len(buffer)
         else:
             self.__file.close()
             rename(self.__path, '{}.1'.format(self.__path))
             self.__file = open(self.__path, mode=self.__mode)
             self.__pos = 0
+        self.__file.write(buffer)
 
-        self.__file.write(input)
+    def read(self):
+        backup_log = None
+        if 'b' in self.__mode:
+            mode = 'rb'
+        else:
+            mode = 'r'
+
+        if isfile('{}.1'.format(self.__path)):
+            with open('{}.1'.format(self.__path), mode=mode) as log_file:
+                backup_log = log_file.read()
+
+        if self.__file.closed:
+            with open(self.__path, mode=mode) as log_file:
+                current_log = log_file.read()
+        else:
+            self.__file.seek(0)
+            current_log = self.__file.read()
+
+        if backup_log:
+            return backup_log + current_log
+        else:
+            return current_log
+
 
     def flush(self):
         self.__file.flush()
@@ -57,9 +83,10 @@ class ProgramLogger:
         self.__port = port
         self.__pid = 0
         self.__pid_on_master = pid_on_master
-        self.__path = path
-        self.__max_file_size = max_file_size
         self.__url = url
+
+        self.__log_file = RotatingFile(path, max_file_size)
+
         self.__ws_connection = None
         self.__ws_buffer = b''
         self.__ws_buffer_has_content = Event(loop=asyncio.get_event_loop())
@@ -81,18 +108,17 @@ class ProgramLogger:
         def handle_connection(reader, writer):
             pid = yield from reader.readline()
             self.__pid = int(pid)
-            log_file = RotatingFile(self.__path, self.__max_file_size)
 
             while not reader.at_eof():
                 buffer = yield from reader.read(1)
                 with self.__lock:
-                    log_file.write(buffer)
-                    log_file.flush()
+                    self.__log_file.write(buffer)
+                    self.__log_file.flush()
                     if self.__ws_connection:
                         self.__ws_buffer += buffer
                         self.__ws_buffer_has_content.set()
 
-            log_file.close()
+            self.__log_file.close()
             writer.close()
             finished.set()
 
@@ -110,13 +136,11 @@ class ProgramLogger:
 
     @asyncio.coroutine
     def enable_remote(self):
-        self.__ws_connection = yield from websockets.connect(self.__url)
         with self.__lock:
-            with open(self.__path, mode='rb') as logfile:
-                data = logfile.read()
-                data = data.decode()
-                message = {'log': data, 'pid': self.__pid_on_master}
-                status = Status.ok(message)
+            self.__ws_connection = yield from websockets.connect(self.__url)
+            log = self.__log_file.read()
+            message = {'log': log.decode(), 'pid': self.__pid_on_master}
+            status = Status.ok(message)
 
         yield from self.__ws_connection.send(status.to_json())
         yield from self.__ws_connection.recv()
@@ -143,17 +167,12 @@ class ProgramLogger:
     @asyncio.coroutine
     def disable_remote(self):
         with self.__lock:
+            self.__ws_buffer = b''
+            self.__ws_buffer_has_content.clear()
             yield from self.__ws_connection.close()
 
     def get_log(self):
-        data = b''
-        with open(self.__path, mode='rb') as logfile:
-            data = logfile.read()
-
-        if isfile(self.__path + '.1'):
-            with open(self.__path, mode='rb') as logfile:
-                data += logfile.read()
-
+        data = self.__log_file.read()
         return data
 
 

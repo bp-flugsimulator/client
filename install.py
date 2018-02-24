@@ -11,7 +11,7 @@ Example
 """
 
 from platform import system, architecture
-from os import listdir, getcwd, remove, mkdir, getcwd
+from os import listdir, remove, mkdir, getcwd
 from os.path import join
 from sys import stderr
 

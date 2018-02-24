@@ -204,11 +204,13 @@ def execute(pid, own_uuid, path, arguments):
             mode |= (mode & 0o444) >> 2  # copy R bits to X
             os.chmod(misc_file_path + '.sh', mode)
 
+            if 'DISPLAY' in os.environ:
+                subprocess_arguments = ['xterm', '-e', '{}.sh'.format(misc_file_path), '-geometry','80']
+            else:
+                subprocess_arguments = ['{}.sh'.format(misc_file_path)]
+
             process = yield from asyncio.create_subprocess_exec(
-                *[
-                    '/bin/xterm', '-e', misc_file_path + '.sh', '-geometry',
-                    '80'
-                ],
+                *subprocess_arguments,
                 cwd=str(PurePath(path).parent),
             )
 

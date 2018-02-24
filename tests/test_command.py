@@ -432,12 +432,11 @@ class TestCommands(EventLoopTestCase):
         if os.name is 'nt':
             prog = 'cmd'
             args = ['/c', 'timeout 3 >nul & echo 0& timeout 1 >nul & echo 1']
-            call_log = 'call {}  {}'.format(prog, args[0])
-            excpected_log = [b'0', b'\r', b'\n', b'1', b'\r', b'\n', b'']
+            expected_log = b'0\r\n1\r\n'
         else:
             prog = '/bin/bash'
             args = ['-c', '"sleep 3; echo 0; sleep 1; echo 1"']
-            excpected_log = b'0\n1\n'
+            expected_log = b'0\n1\n'
         uuid = uuid4().hex
 
         @asyncio.coroutine
@@ -447,10 +446,8 @@ class TestCommands(EventLoopTestCase):
 
         @asyncio.coroutine
         def start_execution():
-            print('started execution')
             yield from client.command.execute(
                 random.choice(string.digits), uuid, prog, args)
-            print('finished execution')
 
         @asyncio.coroutine
         def start_server():
@@ -474,7 +471,7 @@ class TestCommands(EventLoopTestCase):
                     if msg == b'':
                         break
                     log += msg
-                self.assertEqual(excpected_log, log)
+                self.assertIn(expected_log, log)
                 print('finished server')
                 finished.set_result(None)
 
@@ -497,6 +494,83 @@ class TestCommands(EventLoopTestCase):
         LOGGER.url = 'ws://localhost:8750/logs'
 
         self.loop.run_until_complete(wait_for_all())
+
+    def test_websocket_logging_early_disable(self):
+        if os.name is 'nt':
+            prog = 'cmd'
+            args = ['/c', 'timeout 3 >nul & echo 0& timeout 3 >nul & echo 1']
+            expected_log = b'0\r\n'
+        else:
+            prog = '/bin/bash'
+            args = ['-c', '"sleep 3; echo 0; sleep 3; echo 1"']
+            expected_log = b'0\n'
+        uuid = uuid4().hex
+
+        @asyncio.coroutine
+        def enable_logging():
+            yield from asyncio.sleep(0.5)
+            yield from client.command.enable_logging(uuid)
+
+        @asyncio.coroutine
+        def disable_logging():
+            yield from asyncio.sleep(4)
+            yield from client.command.disable_logging(uuid)
+
+        @asyncio.coroutine
+        def start_execution():
+            yield from client.command.execute(
+                random.choice(string.digits), uuid, prog, args)
+
+        @asyncio.coroutine
+        def start_server():
+            finished = asyncio.Future()
+
+            @asyncio.coroutine
+            def websocket_handler(websocket, path):
+                self.assertEqual('/logs', path)
+                # receive log from file
+                json = yield from websocket.recv()
+                log = Status.from_json(json).payload['log'].encode()
+                # ack
+                yield from websocket.send('')
+
+                #receive dynamic log
+                while True:
+                    try:
+                        json = yield from websocket.recv()
+                        # ack
+                        yield from websocket.send('')
+                        msg = Status.from_json(json).payload['log'].encode()
+                        if msg == b'':
+                            break
+                        log += msg
+                    except websockets.exceptions.ConnectionClosed:
+                        break
+                self.assertIn(expected_log, log)
+                print('finished server')
+                finished.set_result(None)
+
+            server_handle = yield from websockets.serve(
+                websocket_handler, host='127.0.0.1', port=8750)
+            yield from finished
+            server_handle.close()
+            yield from server_handle.wait_closed()
+
+        @asyncio.coroutine
+        def wait_for_all():
+            tasks = {
+                start_server(),
+                start_execution(),
+                enable_logging(),
+                disable_logging(),
+            }
+            yield from asyncio.wait(tasks, return_when=asyncio.ALL_COMPLETED)
+
+        LOGGER.url = 'ws://localhost:8750/logs'
+
+        self.loop.run_until_complete(wait_for_all())
+
+
 
     def test_chain_command_none(self):
         result = self.loop.run_until_complete(
