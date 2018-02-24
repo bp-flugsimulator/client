@@ -35,22 +35,22 @@ class TestRotatingFile(TestCase):
 
 
     def test_small_data_on_opened_file(self):
-        content = ''.join(random.choices(string.digits + string.ascii_letters, k=100))
+        content = ''.join([random.choice(string.digits + string.ascii_letters) for _ in range(100)])
         file = RotatingFile(self.PATH, mode='w+')
         file.write(content)
         self.assertEqual(content, file.read())
         file.close()
 
     def test_small_data_on_closed_file(self):
-        content = ''.join(random.choices(string.digits + string.ascii_letters, k=100))
+        content = ''.join([random.choice(string.digits + string.ascii_letters) for _ in range(100)])
         file = RotatingFile(self.PATH, mode='w+')
         file.write(content)
         file.close()
         self.assertEqual(content, file.read())
 
     def test_big_data_on_opened_file(self):
-        content_1 = ''.join(random.choices(string.digits + string.ascii_letters, k=500))
-        content_2 = ''.join(random.choices(string.digits + string.ascii_letters, k=500))
+        content_1 = ''.join([random.choice(string.digits + string.ascii_letters) for _ in range(500)])
+        content_2 = ''.join([random.choice(string.digits + string.ascii_letters) for _ in range(500)])
         file = RotatingFile(self.PATH, max_file_size= 500,mode='w+')
         file.write(content_1)
         file.write(content_2)
@@ -58,8 +58,8 @@ class TestRotatingFile(TestCase):
         file.close()
 
     def test_big_data_on_closed_file(self):
-        content_1 = ''.join(random.choices(string.digits + string.ascii_letters, k=500))
-        content_2 = ''.join(random.choices(string.digits + string.ascii_letters, k=500))
+        content_1 = ''.join([random.choice(string.digits + string.ascii_letters) for _ in range(500)])
+        content_2 = ''.join([random.choice(string.digits + string.ascii_letters) for _ in range(500)])
         file = RotatingFile(self.PATH, max_file_size= 500,mode='w+')
         file.write(content_1)
         file.write(content_2)

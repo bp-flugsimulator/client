@@ -211,12 +211,12 @@ def execute(pid, own_uuid, path, arguments):
 
             process = yield from asyncio.create_subprocess_exec(
                 *subprocess_arguments,
-                cwd=str(PurePath(path).parent),
+                cwd=str(PurePath(path).parent)
             )
 
         yield from asyncio.wait(
             {process.wait(), log_task},
-            return_when=asyncio.ALL_COMPLETED,
+            return_when=asyncio.ALL_COMPLETED
         )
 
     except asyncio.CancelledError:
@@ -247,7 +247,7 @@ def execute(pid, own_uuid, path, arguments):
 
             yield from asyncio.wait(
                 {process.wait(), log_task},
-                return_when=asyncio.ALL_COMPLETED,
+                return_when=asyncio.ALL_COMPLETED
             )
 
     if platform.system() == 'Windows':
