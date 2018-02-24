@@ -205,19 +205,18 @@ def execute(pid, own_uuid, path, arguments):
             os.chmod(misc_file_path + '.sh', mode)
 
             if 'DISPLAY' in os.environ:
-                subprocess_arguments = ['xterm', '-e', '{}.sh'.format(misc_file_path), '-geometry','80']
+                subprocess_arguments = [
+                    'xterm', '-e', '{}.sh'.format(misc_file_path), '-geometry',
+                    '80'
+                ]
             else:
                 subprocess_arguments = ['{}.sh'.format(misc_file_path)]
 
             process = yield from asyncio.create_subprocess_exec(
-                *subprocess_arguments,
-                cwd=str(PurePath(path).parent)
-            )
+                *subprocess_arguments, cwd=str(PurePath(path).parent))
 
         yield from asyncio.wait(
-            {process.wait(), log_task},
-            return_when=asyncio.ALL_COMPLETED
-        )
+            {process.wait(), log_task}, return_when=asyncio.ALL_COMPLETED)
 
     except asyncio.CancelledError:
 
@@ -246,9 +245,7 @@ def execute(pid, own_uuid, path, arguments):
                 print('killed: {}'.format(child))
 
             yield from asyncio.wait(
-                {process.wait(), log_task},
-                return_when=asyncio.ALL_COMPLETED
-            )
+                {process.wait(), log_task}, return_when=asyncio.ALL_COMPLETED)
 
     if platform.system() == 'Windows':
         os.remove(misc_file_path + '.bat')

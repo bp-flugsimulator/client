@@ -26,6 +26,7 @@ class RotatingFile:
     """
     NOT THREAD SAFE
     """
+
     def __init__(self, path, max_file_size=(1 << 20), mode='wb+'):
         self.__path = path
         self.__mode = mode
@@ -65,7 +66,6 @@ class RotatingFile:
             return backup_log + current_log
         else:
             return current_log
-
 
     def flush(self):
         self.__file.flush()

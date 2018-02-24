@@ -20,11 +20,15 @@ from datetime import datetime
 from client import logger
 from client.logger import ClientLogger, RotatingFile
 
+
 class TestRotatingFile(TestCase):
     PATH = None
 
     def setUp(self):
-        self.PATH = join(getcwd(), '{}.log'.format(''.join(random.choices(string.digits + string.ascii_letters, k=10))))
+        self.PATH = join(getcwd(), '{}.log'.format(''.join([
+            random.choice(string.digits + string.ascii_letters)
+            for _ in range(10)
+        ])))
 
     def tearDown(self):
         try:
@@ -33,34 +37,51 @@ class TestRotatingFile(TestCase):
         except FileNotFoundError:
             pass
 
-
     def test_small_data_on_opened_file(self):
-        content = ''.join([random.choice(string.digits + string.ascii_letters) for _ in range(100)])
+        content = ''.join([
+            random.choice(string.digits + string.ascii_letters)
+            for _ in range(100)
+        ])
         file = RotatingFile(self.PATH, mode='w+')
         file.write(content)
         self.assertEqual(content, file.read())
         file.close()
 
     def test_small_data_on_closed_file(self):
-        content = ''.join([random.choice(string.digits + string.ascii_letters) for _ in range(100)])
+        content = ''.join([
+            random.choice(string.digits + string.ascii_letters)
+            for _ in range(100)
+        ])
         file = RotatingFile(self.PATH, mode='w+')
         file.write(content)
         file.close()
         self.assertEqual(content, file.read())
 
     def test_big_data_on_opened_file(self):
-        content_1 = ''.join([random.choice(string.digits + string.ascii_letters) for _ in range(500)])
-        content_2 = ''.join([random.choice(string.digits + string.ascii_letters) for _ in range(500)])
-        file = RotatingFile(self.PATH, max_file_size= 500,mode='w+')
+        content_1 = ''.join([
+            random.choice(string.digits + string.ascii_letters)
+            for _ in range(500)
+        ])
+        content_2 = ''.join([
+            random.choice(string.digits + string.ascii_letters)
+            for _ in range(500)
+        ])
+        file = RotatingFile(self.PATH, max_file_size=500, mode='w+')
         file.write(content_1)
         file.write(content_2)
         self.assertEqual(content_1 + content_2, file.read())
         file.close()
 
     def test_big_data_on_closed_file(self):
-        content_1 = ''.join([random.choice(string.digits + string.ascii_letters) for _ in range(500)])
-        content_2 = ''.join([random.choice(string.digits + string.ascii_letters) for _ in range(500)])
-        file = RotatingFile(self.PATH, max_file_size= 500,mode='w+')
+        content_1 = ''.join([
+            random.choice(string.digits + string.ascii_letters)
+            for _ in range(500)
+        ])
+        content_2 = ''.join([
+            random.choice(string.digits + string.ascii_letters)
+            for _ in range(500)
+        ])
+        file = RotatingFile(self.PATH, max_file_size=500, mode='w+')
         file.write(content_1)
         file.write(content_2)
         file.close()

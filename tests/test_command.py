@@ -570,8 +570,6 @@ class TestCommands(EventLoopTestCase):
 
         self.loop.run_until_complete(wait_for_all())
 
-
-
     def test_chain_command_none(self):
         result = self.loop.run_until_complete(
             client.command.chain_execution(commands=[{
