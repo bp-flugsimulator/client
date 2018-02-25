@@ -272,7 +272,7 @@ def get_log(target_uuid):
     ---------
     target_uuid: string
         uuid of the command which started the program
-    
+
     Returns
     -------
     a dictionary containing the log and the uuid

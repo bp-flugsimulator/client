@@ -25,7 +25,7 @@ from utils import Status
 class RotatingFile:
     """
     File which has a maximum file size. If the file exceeds this size one
-    backupfile is created (or the old one is replaced). 
+    backupfile is created (or the old one is replaced).
 
     ATTENTION!!! this class is not thread save.
     """
@@ -43,7 +43,7 @@ class RotatingFile:
         over the threshold a new file is created and the old file gets backed up.
 
         Argument:
-        buffer: string or byte 
+        buffer: string or byte
             content that gets written to the file
         """
         if self.__pos + len(buffer) < self.__max_file_size:
