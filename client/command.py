@@ -119,7 +119,9 @@ def disable_logging(target_uuid):
 @asyncio.coroutine
 def execute(pid, own_uuid, path, arguments):
     """
-    Executes a subprocess and returns the exit code.
+    Executes a the program with arguments in a new Terminal/CMD window.
+    The output of the program gets piped into '/applications/tee.py' and logged
+    by a ProgramLogger.
 
     Arguments
     ---------
@@ -156,6 +158,9 @@ def execute(pid, own_uuid, path, arguments):
     try:
         if platform.system() == 'Windows':
             with open(misc_file_path + '.bat', mode='w') as execute_file:
+                execute_file.write('@echo off{}'.format(os.linesep))
+                execute_file.write('mode 80,60{}'.format(os.linesep))
+                execute_file.write('@echo on{}'.format(os.linesep))
                 execute_file.write('call {path} {args}'.format(
                     path=('"' + path + '"') if ' ' in path else path,
                     args=reduce(lambda r, l: r + ' ' + l, arguments, ''),
@@ -259,6 +264,19 @@ def execute(pid, own_uuid, path, arguments):
 @Rpc.method
 @asyncio.coroutine
 def get_log(target_uuid):
+    """
+    Returns the current log of the program that is/was executed by a Command
+    with the given uuid.
+
+    Arguments
+    ---------
+    target_uuid: string
+        uuid of the command which started the program
+    
+    Returns
+    -------
+    a dictionary containing the log and the uuid
+    """
     log = LOGGER.program_loggers[target_uuid].get_log()
     return {'log': log.decode(), 'uuid': target_uuid}
 

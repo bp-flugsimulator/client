@@ -97,7 +97,8 @@ class RotatingFile:
 
 class ProgramLogger:
     """
-    class used for logging one program
+    Class used for logging the output of a program which gets piped into
+    '/applications/tee.py'.
     """
 
     def __init__(self, pid_on_master, path, port, max_file_size, url):
@@ -114,22 +115,14 @@ class ProgramLogger:
         self.__ws_finished = False
         self.__lock = Lock()
 
-
-    def disable(self):
-        with self.__lock:
-            self.__log_file.close()
-            self.__ws_buffer = b''
-
-    @property
-    def pid(self):
-        return self.__pid
-
-    @property
-    def port(self):
-        return self.__port
-
     @asyncio.coroutine
     def run(self):
+        """
+        Handles one connection with an instance of '/applications/tee.py' on
+        'self.__port'. The data send by tee gets written to a RotatingFile.
+        If remote logging is enabled the sending thread gets notified when new
+        data arrives.
+        """
         finished = Event(loop=asyncio.get_event_loop())
 
         @asyncio.coroutine
@@ -141,7 +134,6 @@ class ProgramLogger:
                 buffer = yield from reader.read(1)
                 with self.__lock:
                     self.__log_file.write(buffer)
-                    #self.__log_file.flush()
                     if self.__ws_connection:
                         self.__ws_buffer += buffer
                         self.__ws_buffer_has_content.set()
@@ -165,47 +157,78 @@ class ProgramLogger:
 
     @asyncio.coroutine
     def enable_remote(self):
+        """
+        Enables remote logging to the websocket located on 'self.__url'. First
+        the existing log gets send, then updates follow on every request
+        (an empty message)by the receiver.
+        """
         with self.__lock:
             self.__ws_connection = yield from websockets.connect(self.__url)
             log = self.__log_file.read()
-            message = {'log': log.decode(), 'pid': self.__pid_on_master}
-            status = Status.ok(message)
+            msg = {'log': log.decode(), 'pid': self.__pid_on_master}
 
-        yield from self.__ws_connection.send(status.to_json())
+        yield from self.__ws_connection.send(Status.ok(msg).to_json())
         yield from self.__ws_connection.recv()
 
         while True:
             yield from self.__ws_buffer_has_content.wait()
+
             with self.__lock:
-                message = {
+                msg = {
                     'log': self.__ws_buffer.decode(),
                     'pid': self.__pid_on_master
                 }
                 self.__ws_buffer = b''
                 self.__ws_buffer_has_content.clear()
+
             try:
-                yield from self.__ws_connection.send(
-                    Status.ok(message).to_json())
+                yield from self.__ws_connection.send(Status.ok(msg).to_json())
                 yield from self.__ws_connection.recv()
             except websockets.exceptions.ConnectionClosed:
                 break
 
-            if message['log'] == b''.decode():
+            if msg['log'] == b''.decode():
                 break
 
+            # if the stream from tee has finished the buffer gets send and
+            # cleared in the next iterations which terminates the loop
             if self.__ws_finished:
                 self.__ws_buffer_has_content.set()
 
     @asyncio.coroutine
     def disable_remote(self):
+        """
+        Instantly disables remote logging.
+        """
         with self.__lock:
             self.__ws_buffer = b''
             self.__ws_buffer_has_content.clear()
             yield from self.__ws_connection.close()
 
     def get_log(self):
+        """
+        Returns the current content log file.
+
+        Returns
+        -------
+            bytes
+        """
         data = self.__log_file.read()
         return data
+
+    def disable(self):
+        with self.__lock:
+            self.__log_file.close()
+            self.__ws_buffer = b''
+
+    @property
+    def pid(self):
+        return self.__pid
+
+    @property
+    def port(self):
+        return self.__port
+
 
 
 class ClientLogger:
@@ -239,6 +262,20 @@ class ClientLogger:
             mkdir('logs')
 
     def add_program_logger(self, pid, uuid, file_name, max_file_size):
+        """
+        adds a new program logger
+
+        Arguments
+        ---------
+            pid: string
+                pid of the program on the master
+            uuid: string
+                uuid of the command send by the master
+            file_name: string
+                name of the now created log file
+            max_file_size: integer
+                maximum size of the log file in bytes
+        """
         while True:
             try:
                 port = randrange(49152, 65535)
