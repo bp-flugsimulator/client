@@ -432,7 +432,7 @@ class TestCommands(EventLoopTestCase):
         if os.name is 'nt':
             prog = 'cmd'
             def sleep_hack(seconds):
-                return 'ping 8.8.8.8 -n 1 -w ' + str(seconds) + ' >nul'
+                return 'ping 8.8.8.8 -n ' + seconds + ' >nul'
             args = ['/c', sleep_hack('3') + '& echo 0&' + sleep_hack('1') +' & echo 1']
             expected_log = b'0\r\n1\r\n'
         else:
@@ -443,7 +443,7 @@ class TestCommands(EventLoopTestCase):
 
         @asyncio.coroutine
         def enable_logging():
-            yield from asyncio.sleep(0.5)
+            yield from asyncio.sleep(1)
             yield from client.command.enable_logging(uuid)
 
         @asyncio.coroutine
@@ -502,7 +502,7 @@ class TestCommands(EventLoopTestCase):
         if os.name is 'nt':
             prog = 'cmd'
             def sleep_hack(seconds):
-                return 'ping 8.8.8.8 -n 1 -w ' + str(seconds) + ' >nul'
+                return 'ping 8.8.8.8 -n ' + seconds + ' >nul'
             args = ['/c', sleep_hack('3') + '& echo 0&' + sleep_hack('3') +' & echo 1']
             expected_log = b'0\r\n'
         else:
@@ -513,7 +513,7 @@ class TestCommands(EventLoopTestCase):
 
         @asyncio.coroutine
         def enable_logging():
-            yield from asyncio.sleep(0.5)
+            yield from asyncio.sleep(1)
             yield from client.command.enable_logging(uuid)
 
         @asyncio.coroutine
