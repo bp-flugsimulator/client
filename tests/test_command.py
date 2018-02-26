@@ -431,7 +431,9 @@ class TestCommands(EventLoopTestCase):
     def test_websocket_logging(self):
         if os.name is 'nt':
             prog = 'cmd'
-            args = ['/c', 'timeout 3 >nul & echo 0& timeout 1 >nul & echo 1']
+            def sleep_hack(milliseconds):
+                return 'ping 8.8.8.8 -n 1 -w ' + str(milliseconds) + ' >nul'
+            args = ['/c', sleep_hack('3000') + '& echo 0&' + sleep_hack('1000') +' & echo 1']
             expected_log = b'0\r\n1\r\n'
         else:
             prog = '/bin/bash'
@@ -499,7 +501,9 @@ class TestCommands(EventLoopTestCase):
     def test_websocket_logging_early_disable(self):
         if os.name is 'nt':
             prog = 'cmd'
-            args = ['/c', 'timeout 3 >nul & echo 0& timeout 3 >nul & echo 1']
+            def sleep_hack(milliseconds):
+                return 'ping 8.8.8.8 -n 1 -w ' + str(milliseconds) + ' >nul'
+            args = ['/c', sleep_hack('3000') + '& echo 0&' + sleep_hack('3000') +' & echo 1']
             expected_log = b'0\r\n'
         else:
             prog = '/bin/bash'
