@@ -6,185 +6,16 @@ import asyncio
 import os
 import platform
 import subprocess
-import errno
 import shutil
-import hashlib
+import errno
 
 from pathlib import PurePath
 
 from utils import Rpc, Command, Status
 import utils.rpc
-import utils.typecheck
-
-PATH_TYPE_SET = ['file', 'dir']
-
-
-class Helper:
-    """
-    Stores all functions which are helper functions.
-    """
-    methods = []
-    function = utils.rpc.method_wrapper(methods)
-
-    @staticmethod
-    def get(fun):
-        """
-        Searches for a function with a given name.
-
-        Arguments
-        ---------
-            fun: str, function name
-
-        Returns
-        -------
-            Function Handle or None
-        """
-        for f in Helper.methods:
-            if f.__name__ == fun:
-                return f
-
-        return None
-
-
-@Helper.function
-def remove_trailing_path_seperator(path):
-    """
-    If the last character is a path seperator, then it will be removed.
-
-    Arguments
-    ----------
-        path: string
-
-    Returns
-    -------
-        string
-    """
-    if path and (path[-1] == '\\' or path[-1] == '/'):
-        return path[:-1]
-    else:
-        return path
-
-
-@Helper.function
-def hash_file(path):
-    """
-    Generates a hash string from a given file.
-
-    Parameters
-    ----------
-        path: str
-            A path to a file.
-
-    Returns
-    -------
-        A string with an MD5 hash
-
-    Exceptions
-    ----------
-        ValueError: if the path does not point to a file
-    """
-    if not os.path.isfile(path):
-        raise ValueError("The given path `{}` is not a file.".format(path))
-
-    md5 = hashlib.md5()
-
-    with open(path, 'rb') as file_:
-        while True:
-            data = file_.read(65536)
-            if not data:
-                break
-            md5.update(data)
-
-    return "{}".format(md5.hexdigest())
-
-
-@Helper.function
-def hash_directory(path):
-    """
-    Retrieves the hash for each file in this directory (recursive) and hashes all the file
-    hashes.
-
-    Arguments
-    ---------
-        path: directory path
-
-    Returns
-    -------
-        A string with an MD5 hash
-    """
-    if not os.path.isdir(path):
-        raise ValueError(
-            "The given path `{}` is not a directory.".format(path))
-
-    md5 = hashlib.md5()
-
-    for root, _, files in os.walk(path):
-        for fil in files:
-            md5.update(hash_file(os.path.join(root, fil)).encode("utf-8"))
-
-    return "{}".format(md5.hexdigest())
-
-
-@Helper.function
-def filesystem_type_check(
-        source_path,
-        source_type,
-        destination_path,
-        destination_type,
-        backup_ending,
-):
-    """
-    Check the types of the shared input of filesystem_move and filesystem_restore.
-    """
-    utils.typecheck.ensure_type("source_path", source_path, str)
-    utils.typecheck.ensure_type("destination_path", destination_path, str)
-    utils.typecheck.ensure_type("backup_ending", backup_ending, str)
-
-    if not source_type in PATH_TYPE_SET:
-        raise ValueError(
-            "The source_type has to be one of {}".format(PATH_TYPE_SET))
-    if not destination_type in PATH_TYPE_SET:
-        raise ValueError(
-            "The destination_type has to be one of {}".format(PATH_TYPE_SET))
-
-    source_path = remove_trailing_path_seperator(source_path)
-    destination_path = remove_trailing_path_seperator(destination_path)
-
-    source_path = os.path.abspath(source_path)
-    destination_path = os.path.abspath(destination_path)
-
-    if not os.path.exists(source_path):
-        raise FileNotFoundError(
-            errno.ENOENT,
-            os.strerror(errno.ENOENT),
-            source_path,
-        )
-
-    # check if source is dir or file (based on source path)
-    if source_type == 'dir':
-        if not os.path.isdir(source_path):
-            raise ValueError(
-                "The source path `{}` is not a directory.".format(source_path))
-    elif source_type == 'file':
-        if not os.path.isfile(source_path):
-            raise ValueError(
-                "The source path `{}` is not a file.".format(source_path))
-
-    # extract source name from path
-    source_file = os.path.basename(source_path)
-
-    # destination is a directory
-    if destination_type == 'dir':
-        destination_path = os.path.join(destination_path, source_file)
-
-    return (
-        source_path,
-        source_type,
-        destination_path,
-        destination_type,
-        backup_ending,
-        source_file,
-    )
+import utils.typecheck as uty
+import utils.path as up
+import client.shorthand as sh
 
 
 @Rpc.method
@@ -339,8 +170,8 @@ def filesystem_move(
         destination_path,
         destination_type,
         backup_ending,
-        source_file,
-    ) = filesystem_type_check(
+        _,
+    ) = sh.filesystem_type_check(
         source_path,
         source_type,
         destination_path,
@@ -387,12 +218,12 @@ def filesystem_move(
                     os.path.join(root, fil),
                     os.path.join(dest_root, fil),
                 )
-        return hash_directory(destination_path)
+        return sh.hash_directory(destination_path)
 
     elif source_type == 'file':
         # finally link source to destination
         os.link(source_path, destination_path)
-        return hash_file(destination_path)
+        return sh.hash_file(destination_path)
 
 
 @Rpc.method
@@ -418,7 +249,7 @@ def filesystem_restore(
         backup_ending: the file ending for backup files
 
     """
-    utils.typecheck.ensure_type("hash_value", hash_value, str)
+    uty.ensure_type("hash_value", hash_value, str)
 
     (
         source_path,
@@ -426,8 +257,8 @@ def filesystem_restore(
         destination_path,
         destination_type,
         backup_ending,
-        source_file,
-    ) = filesystem_type_check(
+        _,
+    ) = sh.filesystem_type_check(
         source_path,
         source_type,
         destination_path,
@@ -440,9 +271,9 @@ def filesystem_restore(
     if os.path.exists(destination_path):
 
         if source_type == 'file':
-            hash_gen = hash_file(destination_path)
+            hash_gen = sh.hash_file(destination_path)
         elif source_type == 'dir':
-            hash_gen = hash_directory(destination_path)
+            hash_gen = sh.hash_directory(destination_path)
 
         if hash_value != hash_gen and os.path.exists(source_path):
             # if the hash values do not match then
@@ -450,9 +281,9 @@ def filesystem_restore(
             # if the source file was changed but
             # the files are still linked then proceed.
             if source_type == 'file':
-                hash_value = hash_file(source_path)
+                hash_value = sh.hash_file(source_path)
             elif source_type == 'dir':
-                hash_value = hash_directory(source_path)
+                hash_value = sh.hash_directory(source_path)
 
         if hash_value == hash_gen:
             if source_type == 'dir':

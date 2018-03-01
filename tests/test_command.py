@@ -13,47 +13,10 @@ from utils import Rpc, Status
 
 from .testcases import EventLoopTestCase, FileSystemTestCase
 import client.command
-from client.command import Helper
+import client.shorthand
 
 
 class TestCommands(EventLoopTestCase):
-    def test_remove_trailing(self):
-        path = "/home/user/test/"
-        self.assertEqual("", os.path.basename(path))
-        self.assertEqual(
-            "test",
-            os.path.basename(
-                client.command.remove_trailing_path_seperator(path)))
-
-    def test_remove_trailing_no_remove(self):
-        path = "/home/user/test"
-        self.assertEqual("test", os.path.basename(path))
-        self.assertEqual(
-            "test",
-            os.path.basename(
-                client.command.remove_trailing_path_seperator(path)))
-
-    def test_remove_trailing_empty(self):
-        path = ""
-        self.assertEqual("", os.path.basename(path))
-        self.assertEqual(
-            "",
-            os.path.basename(
-                client.command.remove_trailing_path_seperator(path)))
-
-    def test_all_functions_in_rpc(self):
-        """
-        Tests if all functions in commands are set with Rpc flag.
-        """
-        import types
-
-        for func in dir(client.command):
-            if Helper.get(func) is not None:
-                continue
-
-            if isinstance(getattr(client.command, func), types.FunctionType):
-                self.assertEqual(getattr(client.command, func), Rpc.get(func))
-
     def test_execution_wrong_path_object(self):
         self.assertRaises(
             ValueError,
@@ -1001,7 +964,7 @@ class FileCommandDirsTests(FileSystemTestCase):
         self.assertDirsAreNotPresent(backup, destination)
 
 
-class FileCommandTypesTests(FileSystemTestCase):
+class FileCommandGenericTests(FileSystemTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -1013,7 +976,7 @@ class FileCommandTypesTests(FileSystemTestCase):
         self.assertRaisesRegex(
             ValueError,
             "The given path .* is not a file",
-            client.command.hash_file,
+            client.shorthand.hash_file,
             self.joinPath("test"),
         )
 
@@ -1022,7 +985,7 @@ class FileCommandTypesTests(FileSystemTestCase):
         self.assertRaisesRegex(
             ValueError,
             "The given path .* is not a directory",
-            client.command.hash_directory,
+            client.shorthand.hash_directory,
             self.joinPath("test"),
         )
 

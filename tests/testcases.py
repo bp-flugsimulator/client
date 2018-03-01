@@ -11,7 +11,7 @@ import random
 import hashlib
 import string
 
-import client.command
+import client.shorthand
 
 
 def random_string(minimum, maximum):
@@ -139,7 +139,7 @@ class FileSystemTestCase(EventLoopTestCase):
 
         for root, _, files in os.walk(path):
             hashes.extend(
-                map(lambda f: client.command.hash_file(os.path.join(root, f)),
+                map(lambda f: client.shorthand.hash_file(os.path.join(root, f)),
                     files))
 
         return hashes
@@ -297,11 +297,11 @@ class FileSystemTestCase(EventLoopTestCase):
 
         args = list(rel_args)
         last_item = self.joinPath(args.pop())
-        last_hash = client.command.hash_file(last_item)
+        last_hash = client.shorthand.hash_file(last_item)
 
         for arg in args:
             arg = self.joinPath(arg)
-            arg_hash = client.command.hash_file(arg)
+            arg_hash = client.shorthand.hash_file(arg)
 
             if arg_hash != last_hash:
                 raise ValueError(
