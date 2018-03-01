@@ -14,7 +14,6 @@ from pathlib import PurePath
 from utils import Rpc, Command, Status
 import utils.rpc
 import utils.typecheck as uty
-import utils.path as up
 import client.shorthand as sh
 
 
