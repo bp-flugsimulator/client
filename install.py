@@ -43,7 +43,11 @@ def git_to_filename(git_url):
     lib_file = lib_file.replace('/', '-')
     lib_file = lib_file.replace('\n', '')
     for file in listdir('libs'):
+        # normal archive
         if lib_file in file:
+            yield file
+        # wheel file
+        elif lib_file.replace('-', '_') in file:
             yield file
 
 
