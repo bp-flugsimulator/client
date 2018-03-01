@@ -7,8 +7,8 @@ import os
 import sys
 import platform
 import subprocess
+import shutil
 import errno
-import hashlib
 import psutil
 
 from pathlib import PurePath
@@ -16,65 +16,10 @@ from functools import reduce
 
 from utils import Rpc, Command, Status
 import utils.rpc
+import utils.typecheck as uty
 
-from .logger import LOGGER
-
-
-class Helper:
-    """
-    Stores all functions which are helper functions.
-    """
-    methods = []
-    function = utils.rpc.method_wrapper(methods)
-
-    @staticmethod
-    def get(fun):
-        """
-        Searches for a function with a given name.
-
-        Arguments
-        ---------
-            fun: str, function name
-
-        Returns
-        -------
-            Function Handle or None
-        """
-        for f in Helper.methods:
-            if f.__name__ == fun:
-                return f
-
-        return None
-
-
-@Helper.function
-def hash_file(path):
-    """
-    Generates a hash string from a given file.
-
-    Parameters
-    ----------
-        path: str
-            A path to a file.
-
-    Returns
-    -------
-        A str which contains the hash in hex encoding
-
-    Exceptions
-    ----------
-        ValueError: if the path does not point to a file
-    """
-    md5 = hashlib.md5()
-
-    with open(path, 'rb') as file_:
-        while True:
-            data = file_.read(65536)
-            if not data:
-                break
-            md5.update(data)
-
-    return "{}".format(md5.hexdigest())
+from client.logger import LOGGER
+from client import shorthand as sh
 
 
 @Rpc.method
@@ -297,7 +242,7 @@ def chain_execution(commands):
                 command["method"],
                 uuid=command["uuid"],
                 **command["arguments"])
-        except Exception as err:
+        except Exception as err:  #pylint: disable=W0703
             print(err)
             continue
 
@@ -331,7 +276,7 @@ def chain_execution(commands):
                 )
 
                 result.append(dict(ret))
-            except Exception as err:
+            except Exception as err:  #pylint: disable=W0703
                 ret = Status(
                     Status.ID_ERR,
                     {
@@ -349,164 +294,166 @@ def chain_execution(commands):
 
 @Rpc.method
 @asyncio.coroutine
-def move_file(source_path, destination_path, backup_ending):
+def filesystem_move(
+        source_path,
+        source_type,
+        destination_path,
+        destination_type,
+        backup_ending,
+):
     """
-    Function
-    --------
-    Links and renames a given file to a given destination.
-    If the file already exists it will create a BACKUP.
+    Moves a file from the source to the destination.
 
     Arguments
     ---------
-    source_path: string
-        Represents a valid path to an existing file.
-    destination_path: string
-        Represents a valid path to the desired destination.
-        The file will be renamed and linked to that destination
+        source_path: path to the source
+        source_type: Type of the source (a directory -> 'dir' or a file -> 'file')
+        destination_path: path to the destination
+        destination_type: Type of the destination (place it in a directory -> 'dir' or replace it -> 'file')
+        backup_ending: the file ending for backup files
 
     Returns
     -------
-    ValueError: -
-        If source or destination are not strings.
-
-    FileExistsError: -
-        If this function is called with BACKUP files in destination
-        and the destionation file already exists.
-
-    NotADirectoryError: -
-        If the function is called with source as a folder and destination
-        as a file.
-
-    FileNotFoundError: -
-        If no source is given or the path is invalid.
+        The hash of the source
     """
+    (
+        source_path,
+        source_type,
+        destination_path,
+        destination_type,
+        backup_ending,
+        _,
+    ) = sh.filesystem_type_check(
+        source_path,
+        source_type,
+        destination_path,
+        destination_type,
+        backup_ending,
+    )
 
-    if not isinstance(source_path, str):
-        raise ValueError("source path is not a string!")
-    if not isinstance(destination_path, str):
-        raise ValueError("destination path is not a string!")
-    if not isinstance(backup_ending, str):
-        raise ValueError("Backup file ending is not a string!")
-    else:
-        source_path = os.path.abspath(source_path)
-        destination_path = os.path.abspath(destination_path)
+    # destination file with name of source exists
+    if (source_type == 'dir' and os.path.isdir(destination_path)) or (
+            source_type == 'file' and os.path.isfile(destination_path)):
 
-        # File ending of backup files
-        backup_file_ending = backup_ending
+        # Backup file name already exists
+        backup_path = destination_path + backup_ending
 
-        if not os.path.exists(source_path):
-            raise FileNotFoundError(
-                errno.ENOENT,
-                os.strerror(errno.ENOENT),
-                source_path,
+        if os.path.exists(backup_path):
+            raise FileExistsError(
+                errno.EEXIST,
+                os.strerror(errno.EEXIST),
+                backup_path,
             )
 
-        # source is file
-        if os.path.isfile(source_path):
-            source_file = os.path.basename(source_path)
+        # move old file to backup
+        os.rename(destination_path, backup_path)
 
-            if os.path.isdir(destination_path):
-                # destination is folder
-                destination_path = os.path.join(destination_path, source_file)
+    elif os.path.exists(destination_path):
+        raise ValueError(
+            "Expected a {} at `{}`, but did not found one.".format(
+                "file"
+                if source_type == "file" else "directory", destination_path))
 
-            # destination file with name of source exists
-            if os.path.isfile(destination_path):
-                # Backup file name already exists
-                backup_file_name = destination_path + backup_file_ending
+    if source_type == 'dir':
+        os.mkdir(destination_path)
 
-                if os.path.exists(backup_file_name):
-                    raise FileExistsError(
-                        errno.EEXIST,
-                        os.strerror(errno.EEXIST),
-                        backup_file_name,
-                    )
-                else:
-                    print("Moved to BACKUP")
-                    # move old file to backup
-                    os.rename(destination_path, backup_file_name)
+        for root, dirs, files in os.walk(source_path):
+            # set the prefix from source_path to destination_path
+            dest_root = os.path.join(destination_path,
+                                     root[len(source_path) + 1:])
 
-            # finally link source to destination
-            os.link(source_path, destination_path)
+            for directory in dirs:
+                os.mkdir(os.path.join(dest_root, directory))
 
-            return hash_file(destination_path)
-        else:
-            raise ValueError(
-                "Moving a directory is not supported. ({})".format(
-                    source_path))
+            for fil in files:
+                os.link(
+                    os.path.join(root, fil),
+                    os.path.join(dest_root, fil),
+                )
+        return sh.hash_directory(destination_path)
+
+    elif source_type == 'file':
+        # finally link source to destination
+        os.link(source_path, destination_path)
+        return sh.hash_file(destination_path)
 
 
 @Rpc.method
 @asyncio.coroutine
-def restore_file(source_path, destination_path, backup_ending, hash_value):
+def filesystem_restore(
+        source_path,
+        source_type,
+        destination_path,
+        destination_type,
+        backup_ending,
+        hash_value,
+):
     """
-    Function
-    --------
-    Restore the BACKUP files created by move_file to their previous state.
+    Restores a previously moved object.
 
     Arguments
     ---------
-    path: string
-        Path to the File or Directory to be restored.
+        source_path: path to the source
+        source_type: Type of the source (a directory -> 'dir' or a file -> 'file')
+        destination_path: path to the destination
+        destination_type: Type of the destination (place it in a directory -> 'dir' or
+             replace it -> 'file')
+        backup_ending: the file ending for backup files
 
-    Returns
-    -------
-    ValueError: -
-        If path is not a string.
-
-    FileNotFoundError: -
-        Wrong path to file or file does not end with BACKUP ending.
-        Or if the file without ending is not a link or directory.
     """
-    if not isinstance(source_path, str):
-        raise ValueError("source Path is not a string!")
-    if not isinstance(destination_path, str):
-        raise ValueError("destination Path is not a string!")
-    if not isinstance(backup_ending, str):
-        raise ValueError("Backup file ending is not a string!")
-    if not isinstance(hash_value, str):
-        raise ValueError("Hash Value is not a string!")
-    else:
-        source_path = os.path.abspath(source_path)
-        destination_path = os.path.abspath(destination_path)
+    uty.ensure_type("hash_value", hash_value, str)
 
-        if os.path.isdir(source_path):
-            raise ValueError(
-                "Moving a directory is not supported. ({})".format(
-                    source_path))
+    (
+        source_path,
+        source_type,
+        destination_path,
+        destination_type,
+        backup_ending,
+        _,
+    ) = sh.filesystem_type_check(
+        source_path,
+        source_type,
+        destination_path,
+        destination_type,
+        backup_ending,
+    )
 
-        # Add file name to path, if destination is a directory.
-        if os.path.isdir(destination_path):
-            destination_path = os.path.join(
-                destination_path,
-                os.path.basename(source_path),
-            )
+    backup_path = destination_path + backup_ending
 
-        backup_path = destination_path + backup_ending
+    if os.path.exists(destination_path):
 
-        if not os.path.exists(destination_path):
-            if os.path.exists(backup_path):
-                os.rename(backup_path, destination_path)
-            return None
-
-        hash_gen = hash_file(destination_path)
+        if source_type == 'file':
+            hash_gen = sh.hash_file(destination_path)
+        elif source_type == 'dir':
+            hash_gen = sh.hash_directory(destination_path)
 
         if hash_value != hash_gen and os.path.exists(source_path):
             # if the hash values do not match then
             # check if the source file was changed
             # if the source file was changed but
             # the files are still linked then proceed.
-            hash_value = hash_file(source_path)
+            if source_type == 'file':
+                hash_value = sh.hash_file(source_path)
+            elif source_type == 'dir':
+                hash_value = sh.hash_directory(source_path)
 
         if hash_value == hash_gen:
-            os.remove(destination_path)
-            if os.path.exists(backup_path):
-                os.rename(backup_path, destination_path)
+            if source_type == 'dir':
+                shutil.rmtree(destination_path)
+            elif source_type == 'file':
+                os.remove(destination_path)
         else:
             raise ValueError(
-                "The file {} was changed while it was replaced. Remove it yourself.".
-                format(destination_path))
+                "The {} `{}` was changed while it was replaced. Remove it yourself if you don not need it.".
+                format(
+                    "file" if source_type == 'file' else 'directory',
+                    destination_path,
+                ))
 
-        return None
+    if os.path.exists(backup_path):
+        os.rename(backup_path, destination_path)
+
+    return None
 
 
 @Rpc.method
