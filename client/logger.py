@@ -230,7 +230,6 @@ class ProgramLogger:
         return self.__port
 
 
-
 class ClientLogger:
     """
     class used to manage logging

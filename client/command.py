@@ -96,7 +96,8 @@ def execute(pid, own_uuid, path, arguments):
     misc_file_name = '{}-{}'.format(PurePath(path).parts[-1], own_uuid)
     misc_file_path = os.path.join(LOGGER.logdir, misc_file_name)
 
-    LOGGER.add_program_logger(pid, own_uuid, misc_file_name + '.log', 1048576)
+    LOGGER.add_program_logger(pid, own_uuid, misc_file_name + '.log',
+                              (1 << 20) * 2)
     PROGRAM_LOGGER = LOGGER.program_loggers[own_uuid]
     log_task = asyncio.get_event_loop().create_task(PROGRAM_LOGGER.run())
 
@@ -154,7 +155,7 @@ def execute(pid, own_uuid, path, arguments):
             mode |= (mode & 0o444) >> 2  # copy R bits to X
             os.chmod(misc_file_path + '.sh', mode)
 
-            if 'DISPLAY' in os.environ:
+            if 'DISPLAY' in os.environ and shutil.which('xterm'):
                 subprocess_arguments = [
                     'xterm', '-e', '{}.sh'.format(misc_file_path), '-geometry',
                     '80'

@@ -172,9 +172,14 @@ class TestCommands(EventLoopTestCase):
     def test_websocket_logging(self):
         if os.name is 'nt':
             prog = 'cmd'
+
             def sleep_hack(seconds):
                 return 'ping 8.8.8.8 -n ' + seconds + ' >nul'
-            args = ['/c', sleep_hack('3') + '& echo 0&' + sleep_hack('1') +' & echo 1']
+
+            args = [
+                '/c',
+                sleep_hack('3') + '& echo 0&' + sleep_hack('1') + ' & echo 1'
+            ]
             expected_log = b'0\r\n1\r\n'
         else:
             prog = '/bin/bash'
@@ -242,9 +247,14 @@ class TestCommands(EventLoopTestCase):
     def test_websocket_logging_early_disable(self):
         if os.name is 'nt':
             prog = 'cmd'
+
             def sleep_hack(seconds):
                 return 'ping 8.8.8.8 -n ' + seconds + ' >nul'
-            args = ['/c', sleep_hack('3') + '& echo 0&' + sleep_hack('3') +' & echo 1']
+
+            args = [
+                '/c',
+                sleep_hack('3') + '& echo 0&' + sleep_hack('3') + ' & echo 1'
+            ]
             expected_log = b'0\r\n'
         else:
             prog = '/bin/bash'
@@ -608,8 +618,8 @@ class FileCommandFilesTests(FileSystemTestCase):
         (source, _, hash_source) = self.provideFile("test.abc")
         destination_path = self.provideDirectory("this_is_my_folder")
         (destination, _, _) = self.provideFile("this_is_my_folder/test.abc")
-        backup = self.joinPath("this_is_my_folder/test.abc" +
-                               self.backup_ending)
+        backup = self.joinPath(
+            "this_is_my_folder/test.abc" + self.backup_ending)
 
         self.assertFilesArePresent(source, destination)
         self.assertFilesAreNotPresent(backup)
@@ -649,8 +659,8 @@ class FileCommandFilesTests(FileSystemTestCase):
             data_destination,
             _,
         ) = self.provideFile("this_is_my_folder/test.abc")
-        backup = self.joinPath("this_is_my_folder/test.abc" +
-                               self.backup_ending)
+        backup = self.joinPath(
+            "this_is_my_folder/test.abc" + self.backup_ending)
 
         self.assertFilesArePresent(source, destination)
         self.assertDirsArePresent(destination_path)
@@ -997,8 +1007,8 @@ class FileCommandDirsTests(FileSystemTestCase):
         destination_path = self.provideDirectory("this_is_my_folder")
         (destination, _,
          _) = self.provideFilledDirectory("this_is_my_folder/test.abc")
-        backup = self.joinPath("this_is_my_folder/test.abc" +
-                               self.backup_ending)
+        backup = self.joinPath(
+            "this_is_my_folder/test.abc" + self.backup_ending)
 
         self.assertDirsArePresent(source, destination, destination_path)
         self.assertDirsAreNotPresent(backup)
@@ -1037,8 +1047,8 @@ class FileCommandDirsTests(FileSystemTestCase):
             _,
         ) = self.provideFilledDirectory("this_is_my_folder/test.abc")
 
-        backup = self.joinPath("this_is_my_folder/test.abc" +
-                               self.backup_ending)
+        backup = self.joinPath(
+            "this_is_my_folder/test.abc" + self.backup_ending)
 
         self.assertDirsArePresent(source, destination, destination_path)
 
@@ -1098,8 +1108,8 @@ class FileCommandDirsTests(FileSystemTestCase):
         self.assertDirsArePresent(source, destination)
         self.assertDirsAreNotPresent(backup)
 
-        self.assertDirEqual(destination,
-                            list(map(lambda f: f[2], files_backup)))
+        self.assertDirEqual(destination, list(
+            map(lambda f: f[2], files_backup)))
 
     def test_filesystem_restore_no_destination(self):
         (source, _, hash_source) = self.provideFilledDirectory("test.abc")
