@@ -4,17 +4,22 @@ This module contains all available rpc commands.
 
 import asyncio
 import os
+import sys
 import platform
 import subprocess
 import shutil
 import errno
+import psutil
 
 from pathlib import PurePath
+from functools import reduce
 
 from utils import Rpc, Command, Status
 import utils.rpc
 import utils.typecheck as uty
-import client.shorthand as sh
+
+from client.logger import LOGGER
+from client import shorthand as sh
 
 
 @Rpc.method
@@ -29,9 +34,39 @@ def online():
 
 @Rpc.method
 @asyncio.coroutine
-def execute(path, arguments):
+def enable_logging(target_uuid):
     """
-    Executes a subprocess and returns the exit code.
+    Enables logging over websockets on the path '/logs'
+
+    Arguments
+    ---------
+    target_uuid: string
+        uuid of the command for with logging gets enabled
+    """
+    yield from LOGGER.program_loggers[target_uuid].enable_remote()
+
+
+@Rpc.method
+@asyncio.coroutine
+def disable_logging(target_uuid):
+    """
+    Disables logging over websockets on the path '/logs'
+
+    Arguments
+    ---------
+    target_uuid: string
+        uuid of the command for with logging gets disabled
+    """
+    yield from LOGGER.program_loggers[target_uuid].disable_remote()
+
+
+@Rpc.method
+@asyncio.coroutine
+def execute(pid, own_uuid, path, arguments):
+    """
+    Executes a the program with arguments in a new Terminal/CMD window.
+    The output of the program gets piped into '/applications/tee.py' and logged
+    by a ProgramLogger.
 
     Arguments
     ---------
@@ -58,23 +93,138 @@ def execute(path, arguments):
             if not isinstance(arg, str):
                 raise ValueError("Element in arguments is not a string.")
 
-    process = yield from asyncio.create_subprocess_exec(
-        *([path] + arguments), cwd=str(PurePath(path).parent))
+    misc_file_name = '{}-{}'.format(PurePath(path).parts[-1], own_uuid)
+    misc_file_path = os.path.join(LOGGER.logdir, misc_file_name)
+
+    LOGGER.add_program_logger(pid, own_uuid, misc_file_name + '.log',
+                              (1 << 20) * 2)
+    PROGRAM_LOGGER = LOGGER.program_loggers[own_uuid]
+    log_task = asyncio.get_event_loop().create_task(PROGRAM_LOGGER.run())
 
     try:
-        code = yield from process.wait()
-        return code
-    except asyncio.CancelledError:
-        if platform.system() == "Windows":
-            import psutil
-            parent = psutil.Process(process.pid)
-            for child in parent.children(recursive=True):
-                child.terminate()
+        if platform.system() == 'Windows':
+            with open(misc_file_path + '.bat', mode='w') as execute_file:
+                execute_file.write('@echo off{}'.format(os.linesep))
+                execute_file.write('mode 80,60{}'.format(os.linesep))
+                execute_file.write('@echo on{}'.format(os.linesep))
+                execute_file.write('call {path} {args}'.format(
+                    path=('"' + path + '"') if ' ' in path else path,
+                    args=reduce(lambda r, l: r + ' ' + l, arguments, ''),
+                ))
+                execute_file.write('{}@echo off'.format(os.linesep))
+                execute_file.write('{}echo %errorlevel% > {}.exit'.format(
+                    os.linesep, misc_file_path))
 
-        process.terminate()
-        yield from process.wait()
-        return 'Process got canceled and returned {}.'.format(
-            process.returncode)
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags = subprocess.STARTF_USESHOWWINDOW
+            startupinfo.wShowWindow = 6
+
+            command = """call {misc_file_path}.bat 2>&1 | {python} {tee} --port {port}""".format(
+                python=sys.executable,
+                tee=os.path.join(os.getcwd(), 'applications', 'tee.py'),
+                misc_file_path=misc_file_path,
+                port=PROGRAM_LOGGER.port,
+            )
+
+            print(command)
+
+            process = yield from asyncio.create_subprocess_exec(
+                *['cmd.exe', '/c', command],
+                cwd=str(PurePath(path).parent),
+                creationflags=subprocess.CREATE_NEW_CONSOLE,
+                startupinfo=startupinfo)
+        else:
+            command = """({path} {args}) 2>&1 | {python} {tee} --port {port}""".format(
+                path=path,
+                args=reduce(lambda r, l: r + ' ' + l, arguments, ''),
+                python=sys.executable,
+                tee=os.path.join(os.getcwd(), 'applications', 'tee.py'),
+                misc_file_path=misc_file_path,
+                port=PROGRAM_LOGGER.port,
+            )
+
+            print(command)
+
+            with open(misc_file_path + '.sh', mode='w') as execute_file:
+                execute_file.write('#!/bin/bash' + os.linesep)
+                execute_file.write(command + os.linesep)
+                execute_file.write('echo ${PIPESTATUS[0]} > ' +
+                                   misc_file_path + '.exit' + os.linesep)
+
+            mode = os.stat(misc_file_path + '.sh').st_mode
+            mode |= (mode & 0o444) >> 2  # copy R bits to X
+            os.chmod(misc_file_path + '.sh', mode)
+
+            if 'DISPLAY' in os.environ and shutil.which('xterm'):
+                subprocess_arguments = [
+                    'xterm', '-e', '{}.sh'.format(misc_file_path), '-geometry',
+                    '80'
+                ]
+            else:
+                subprocess_arguments = ['{}.sh'.format(misc_file_path)]
+
+            process = yield from asyncio.create_subprocess_exec(
+                *subprocess_arguments, cwd=str(PurePath(path).parent))
+
+        yield from asyncio.wait(
+            {process.wait(), log_task}, return_when=asyncio.ALL_COMPLETED)
+
+    except asyncio.CancelledError:
+
+        def children():
+            if platform.system() == 'Windows':
+                for child in psutil.Process(process.pid).children():
+                    for grandchild in child.children(recursive=True):
+                        yield grandchild
+            else:
+                for child in psutil.Process(
+                        process.pid).children(recursive=True):
+                    if (child.pid != process.pid
+                            and child.pid != PROGRAM_LOGGER.pid
+                            and child.name() != misc_file_name[:15]):
+                        yield child
+
+        for child in children():
+            child.terminate()
+            print('terminated: {}'.format(child))
+
+        _, pending = yield from asyncio.wait({process.wait()}, timeout=3)
+
+        if pending:
+            for child in children():
+                child.kill()
+                print('killed: {}'.format(child))
+
+            yield from asyncio.wait(
+                {process.wait(), log_task}, return_when=asyncio.ALL_COMPLETED)
+
+    if platform.system() == 'Windows':
+        os.remove(misc_file_path + '.bat')
+    else:
+        os.remove(misc_file_path + '.sh')
+
+    with open(misc_file_path + '.exit') as log_file:
+        return log_file.readlines()[0].rstrip()
+
+
+@Rpc.method
+@asyncio.coroutine
+def get_log(target_uuid):
+    """
+    Returns the current log of the program that is/was executed by a Command
+    with the given uuid.
+
+    Arguments
+    ---------
+    target_uuid: string
+        uuid of the command which started the program
+
+    Returns
+    -------
+    a dictionary containing the log and the uuid
+    """
+    log = LOGGER.program_loggers[target_uuid].get_log()
+    return {'log': log.decode(), 'uuid': target_uuid}
 
 
 @Rpc.method
@@ -119,8 +269,10 @@ def chain_execution(commands):
 
                 ret = Status(
                     Status.ID_OK,
-                    {'method': cmd.method,
-                     'result': ret},
+                    {
+                        'method': cmd.method,
+                        'result': ret
+                    },
                     cmd.uuid,
                 )
 
@@ -128,8 +280,10 @@ def chain_execution(commands):
             except Exception as err:  #pylint: disable=W0703
                 ret = Status(
                     Status.ID_ERR,
-                    {'method': cmd.method,
-                     'result': str(err)},
+                    {
+                        'method': cmd.method,
+                        'result': str(err)
+                    },
                     cmd.uuid,
                 )
 

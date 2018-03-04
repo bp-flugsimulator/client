@@ -180,4 +180,7 @@ venv.bak/
 .vscode/*
 .history
 
+# own stuff
+.logs/*
+
 # End of https://www.gitignore.io/api/python,visualstudiocode,pycharm+all,pydev,django

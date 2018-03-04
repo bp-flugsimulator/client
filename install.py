@@ -6,23 +6,76 @@ the system specific version from the internet into ./libs and use the flag
 
 Example
 -------
-    $python install.py --update
-    $python install.py --upgrade
-    $python install.py --update_client 127.0.0.1:4242
+    $python install.py --download-packages
+    $python install.py --download-client 127.0.0.1:4242
 """
 
 from platform import system, architecture
-from os import listdir, getcwd, remove
+from os import listdir, remove, mkdir, getcwd
 from os.path import join
 from sys import stderr
+
+from json import loads
 
 from argparse import ArgumentParser
 
 from urllib.request import urlretrieve
 
-from shutil import unpack_archive
+from shutil import unpack_archive, rmtree
 
 import pip
+
+
+class Config:
+    """
+    Class that represents the config file
+    """
+
+    def __init__(self, download_c=None, download_p=False):
+        self.__download_client = download_c
+        self.__download_packages = download_p
+
+    @classmethod
+    def parse(cls):
+        """
+        Parses 'config.json' and returns a Config object
+
+        Return
+        ------
+        Config:
+            a Config object based on 'config.json'
+        """
+        try:
+            with open('config.json') as config_file:
+                data = config_file.read()
+                json = loads(data)
+                return cls(json['download_client'], json['download_packages'])
+        except FileNotFoundError:
+            return cls()
+
+    @property
+    def download_client(self):
+        """
+        Getter for __download_client
+
+        Returns
+        -------
+        str:
+            address of the server from where the client gets downloaded
+        """
+        return self.__download_client
+
+    @property
+    def download_packages(self):
+        """
+        Getter for __download_client
+
+        Returns
+        -------
+        bool:
+            True if packages will get downloaded otherwise false
+        """
+        return self.__download_packages
 
 
 def git_to_filename(git_url):
@@ -94,7 +147,30 @@ def install(lib_name):
         raise Exception('could not install ' + lib_name + ' from file')
 
 
-def download(lib_name):
+def download_client(address):
+    """
+    Downloads client files from the given address.
+
+    Parameter
+    ---------
+    address: str
+        address of the server
+    """
+    URL = 'http://' + address + '/static/downloads/client.zip'
+
+    print('downloading update from ', URL)
+    (file_name, _) = urlretrieve(URL, filename="client.zip")
+
+    print('clear lib folder')
+    rmtree(join(getcwd(), 'libs'))
+    mkdir(join(getcwd(), 'libs'))
+
+    print('update files')
+    unpack_archive(file_name)
+    remove(file_name)
+
+
+def download_library(lib_name):
     """
     Downloads a library to ./libs
 
@@ -120,30 +196,24 @@ def download(lib_name):
     if pip.main(['download', lib_name, '-d', './libs']) != 0:
         raise Exception('could not download ' + lib_name)
 
-
 if __name__ == "__main__":
     # set up argument parser
     PARSER = ArgumentParser(
         description='Updates and installs packages needed for the client.')
     PARSER.add_argument(
-        '--upgrade',
-        help='installs all packages from ./libs',
-        action='store_const',
-        const=True)
-    PARSER.add_argument(
-        '--update',
+        '--download-packages',
         help='downloads all packages from requirements.txt to ./libs',
         action='store_const',
         const=True)
     PARSER.add_argument(
-        '--update_client',
+        '--download-client',
         help='updates the client from the given server',
+        metavar=('IP:PORT'),
         type=str)
 
     ARGS = PARSER.parse_args()
 
-    if not (ARGS.update or ARGS.upgrade or ARGS.update_client):
-        PARSER.print_help()
+    CONFIG = Config.parse()
 
     # select requirements file
     if system() == 'Windows':
@@ -154,24 +224,20 @@ if __name__ == "__main__":
         else:
             stderr.write(architecture()[0] +
                          ' is not officially supported but may work\n')
+            REQUIREMENTS_FILE = 'linux_requirements.txt'
     else:
         stderr.write(system() + ' is not officially supported but may work\n')
 
-    if ARGS.update_client:
-        URL = 'http://' + str(
-            ARGS.update_client) + '/static/downloads/client.zip'
-        print('downloading update from ', URL)
-        (file_name, _) = urlretrieve(URL, filename="client.zip")
-        print('update files')
-        unpack_archive(file_name)
-        remove(file_name)
+    if ARGS.download_client:
+        download_client(ARGS.download_client)
+    elif CONFIG.download_client:
+        download_client(CONFIG.download_client)
 
-    if ARGS.update:
+    if ARGS.download_packages or CONFIG.download_packages:
         with open(REQUIREMENTS_FILE) as requirements:
             for library in requirements:
-                download(library)
+                download_library(library)
 
-    if ARGS.upgrade:
-        with open(REQUIREMENTS_FILE) as requirements:
-            for library in requirements:
-                install(library)
+    with open(REQUIREMENTS_FILE) as requirements:
+        for library in requirements:
+            install(library)

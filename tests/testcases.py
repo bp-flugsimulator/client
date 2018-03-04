@@ -10,8 +10,10 @@ import shutil
 import random
 import hashlib
 import string
+import time
 
-import client.shorthand
+from client import shorthand
+from client.logger import LOGGER
 
 
 def random_string(minimum, maximum):
@@ -30,8 +32,9 @@ def random_string(minimum, maximum):
     length = random.randint(minimum, maximum)
 
     return ''.join(
-        random.choice(string.ascii_uppercase + string.ascii_lowercase +
-                      string.digits) for _ in range(length))
+        random.choice(
+            string.ascii_uppercase + string.ascii_lowercase + string.digits)
+        for _ in range(length))
 
 
 class EventLoopTestCase(unittest.TestCase):
@@ -42,6 +45,12 @@ class EventLoopTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+
+        try:
+            LOGGER.enable()
+        except FileExistsError:
+            time.sleep(0.1)
+            LOGGER.enable()
 
         if os.name == 'nt':
             cls.loop = asyncio.ProactorEventLoop()
@@ -54,6 +63,7 @@ class EventLoopTestCase(unittest.TestCase):
     def tearDownClass(cls):
         super().tearDownClass()
         cls.loop.close()
+        LOGGER.disable()
 
 
 class FileSystemTestCase(EventLoopTestCase):
@@ -139,7 +149,7 @@ class FileSystemTestCase(EventLoopTestCase):
 
         for root, _, files in os.walk(path):
             hashes.extend(
-                map(lambda f: client.shorthand.hash_file(os.path.join(root, f)),
+                map(lambda f: shorthand.hash_file(os.path.join(root, f)),
                     files))
 
         return hashes
@@ -297,11 +307,11 @@ class FileSystemTestCase(EventLoopTestCase):
 
         args = list(rel_args)
         last_item = self.joinPath(args.pop())
-        last_hash = client.shorthand.hash_file(last_item)
+        last_hash = shorthand.hash_file(last_item)
 
         for arg in args:
             arg = self.joinPath(arg)
-            arg_hash = client.shorthand.hash_file(arg)
+            arg_hash = shorthand.hash_file(arg)
 
             if arg_hash != last_hash:
                 raise ValueError(
