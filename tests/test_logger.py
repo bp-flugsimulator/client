@@ -96,7 +96,7 @@ class TestLogger(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        super(TestLogger, cls).setUpClass()
+        super().setUpClass()
         if not isdir(cls.FOLDER):
             mkdir(cls.FOLDER)
 

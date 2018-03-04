@@ -10,6 +10,7 @@ import shutil
 import random
 import hashlib
 import string
+import time
 
 from client import shorthand
 from client.logger import LOGGER
@@ -45,7 +46,11 @@ class EventLoopTestCase(unittest.TestCase):
     def setUpClass(cls):
         super().setUpClass()
 
-        LOGGER.enable()
+        try:
+            LOGGER.enable()
+        except FileExistsError:
+            time.sleep(0.1)
+            LOGGER.enable()
 
         if os.name == 'nt':
             cls.loop = asyncio.ProactorEventLoop()
