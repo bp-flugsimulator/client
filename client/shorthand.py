@@ -11,6 +11,23 @@ import utils.path as up
 
 PATH_TYPE_SET = ['file', 'dir']
 
+def escape_path(path):
+    """
+    Adds " if the path contains whitespaces
+
+    Parameters
+    ----------
+        path: str
+            A path to a file.
+
+    Returns
+    -------
+        an escaped path
+    """
+    if ' ' in path and not (path.startswith('"') and path.endswith('"')):
+        return '"' + path + '"'
+    else:
+        return path
 
 def hash_file(path):
     """

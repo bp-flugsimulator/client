@@ -10,7 +10,6 @@ import subprocess
 import shutil
 import errno
 import psutil
-import shlex
 
 from pathlib import PurePath
 from functools import reduce
@@ -99,11 +98,10 @@ def execute(pid, own_uuid, path, arguments):
     misc_file_path = os.path.join(LOGGER.logdir, misc_file_name)
 
     LOGGER.add_program_logger(pid, own_uuid,
-                              shlex.quote(misc_file_name + '.log'),
+                              sh.escape_path(misc_file_name + '.log'),
                               (1 << 20) * 2)
     PROGRAM_LOGGER = LOGGER.program_loggers[own_uuid]
     log_task = asyncio.get_event_loop().create_task(PROGRAM_LOGGER.run())
-
     try:
         if platform.system() == 'Windows':
             with open(misc_file_path + '.bat', mode='w') as execute_file:
@@ -111,12 +109,12 @@ def execute(pid, own_uuid, path, arguments):
                 execute_file.write('mode 80,60{}'.format(os.linesep))
                 execute_file.write('@echo on{}'.format(os.linesep))
                 execute_file.write('call {path} {args}'.format(
-                    path=shlex.quote(path),
+                    path=sh.escape_path(path),
                     args=reduce(lambda r, l: r + ' ' + l, arguments, ''),
                 ))
                 execute_file.write('{}@echo off'.format(os.linesep))
                 execute_file.write('{}echo %errorlevel% > {}'.format(
-                    os.linesep, shlex.quote(misc_file_path + '.exit')))
+                    os.linesep, sh.escape_path(misc_file_path + '.exit')))
 
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags = subprocess.STARTF_USESHOWWINDOW
@@ -125,7 +123,7 @@ def execute(pid, own_uuid, path, arguments):
             command = """call {bat_file_path} 2>&1 | {python} {tee} --port {port}""".format(
                 python=sys.executable,
                 tee=os.path.join(os.getcwd(), 'applications', 'tee.py'),
-                bat_file_path=misc_file_path + '.bat',
+                bat_file_path=sh.escape_path(misc_file_path + '.bat'),
                 port=PROGRAM_LOGGER.port,
             )
 
@@ -138,7 +136,7 @@ def execute(pid, own_uuid, path, arguments):
                 startupinfo=startupinfo)
         else:
             command = """({path} {args}) 2>&1 | {python} {tee} --port {port}""".format(
-                path=shlex.quote(path),
+                path=sh.escape_path(path),
                 args=reduce(lambda r, l: r + ' ' + l, arguments, ''),
                 python=sys.executable,
                 tee=os.path.join(os.getcwd(), 'applications', 'tee.py'),
@@ -150,7 +148,7 @@ def execute(pid, own_uuid, path, arguments):
             with open(misc_file_path + '.sh', mode='w') as execute_file:
                 execute_file.write('#!/bin/bash' + os.linesep)
                 execute_file.write(command + os.linesep)
-                execute_file.write('echo ${PIPESTATUS[0]} > ' + shlex.quote(
+                execute_file.write('echo ${PIPESTATUS[0]} > ' + sh.escape_path(
                     misc_file_path + '.exit') + os.linesep)
 
             mode = os.stat(misc_file_path + '.sh').st_mode
@@ -159,10 +157,10 @@ def execute(pid, own_uuid, path, arguments):
 
             if 'DISPLAY' in os.environ and shutil.which('xterm'):
                 subprocess_arguments = [
-                    'xterm', '-e', misc_file_path + '.sh', '-geometry', '80'
+                    'xterm', '-e', sh.escape_path(misc_file_path + '.sh'), '-geometry', '80'
                 ]
             else:
-                subprocess_arguments = [misc_file_path + 'sh']
+                subprocess_arguments = [sh.escape_path(misc_file_path + 'sh')]
 
             process = yield from asyncio.create_subprocess_exec(
                 *subprocess_arguments, cwd=str(PurePath(path).parent))
