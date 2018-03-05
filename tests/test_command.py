@@ -74,17 +74,17 @@ class TestCommands(EventLoopTestCase):
     def test_execution_directory(self):
         path = join(getcwd(), 'applications')
         if os.name == 'nt':
-            prog = join(path, 'echo.bat')
+            prog = join(path, 'folder with spaces', 'echo with spaces.bat')
         else:
-            prog = join(path, 'echo.sh')
+            prog = join(path, 'folder with spaces', 'echo with spaces.sh')
 
         self.assertEqual('0',
                          self.loop.run_until_complete(
                              client.command.execute(
                                  random.choice(string.digits),
                                  uuid4().hex, prog, [])))
-        self.assertTrue(isfile(join(path, 'test.txt')))
-        remove(join(path, 'test.txt'))
+        self.assertTrue(isfile(join(path, 'folder with spaces', 'test.txt')))
+        remove(join(path, 'folder with spaces', 'test.txt'))
 
     def test_cancel_execution_with_terminate(self):
         if os.name is 'nt':

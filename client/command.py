@@ -10,6 +10,7 @@ import subprocess
 import shutil
 import errno
 import psutil
+import shlex
 
 from pathlib import PurePath
 from functools import reduce
@@ -93,10 +94,12 @@ def execute(pid, own_uuid, path, arguments):
             if not isinstance(arg, str):
                 raise ValueError("Element in arguments is not a string.")
 
-    misc_file_name = '{}-{}'.format(PurePath(path).parts[-1], own_uuid)
+    misc_file_name = '{}-{}'.format(PurePath(path).parts[-1],
+                                    own_uuid).replace(' ', '')
     misc_file_path = os.path.join(LOGGER.logdir, misc_file_name)
 
-    LOGGER.add_program_logger(pid, own_uuid, misc_file_name + '.log',
+    LOGGER.add_program_logger(pid, own_uuid,
+                              shlex.quote(misc_file_name + '.log'),
                               (1 << 20) * 2)
     PROGRAM_LOGGER = LOGGER.program_loggers[own_uuid]
     log_task = asyncio.get_event_loop().create_task(PROGRAM_LOGGER.run())
@@ -108,21 +111,21 @@ def execute(pid, own_uuid, path, arguments):
                 execute_file.write('mode 80,60{}'.format(os.linesep))
                 execute_file.write('@echo on{}'.format(os.linesep))
                 execute_file.write('call {path} {args}'.format(
-                    path=('"' + path + '"') if ' ' in path else path,
+                    path=shlex.quote(path),
                     args=reduce(lambda r, l: r + ' ' + l, arguments, ''),
                 ))
                 execute_file.write('{}@echo off'.format(os.linesep))
-                execute_file.write('{}echo %errorlevel% > {}.exit'.format(
-                    os.linesep, misc_file_path))
+                execute_file.write('{}echo %errorlevel% > {}'.format(
+                    os.linesep, shlex.quote(misc_file_path + '.exit')))
 
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags = subprocess.STARTF_USESHOWWINDOW
             startupinfo.wShowWindow = 6
 
-            command = """call {misc_file_path}.bat 2>&1 | {python} {tee} --port {port}""".format(
+            command = """call {bat_file_path} 2>&1 | {python} {tee} --port {port}""".format(
                 python=sys.executable,
                 tee=os.path.join(os.getcwd(), 'applications', 'tee.py'),
-                misc_file_path=misc_file_path,
+                bat_file_path=misc_file_path + '.bat',
                 port=PROGRAM_LOGGER.port,
             )
 
@@ -135,11 +138,10 @@ def execute(pid, own_uuid, path, arguments):
                 startupinfo=startupinfo)
         else:
             command = """({path} {args}) 2>&1 | {python} {tee} --port {port}""".format(
-                path=path,
+                path=shlex.quote(path),
                 args=reduce(lambda r, l: r + ' ' + l, arguments, ''),
                 python=sys.executable,
                 tee=os.path.join(os.getcwd(), 'applications', 'tee.py'),
-                misc_file_path=misc_file_path,
                 port=PROGRAM_LOGGER.port,
             )
 
@@ -148,8 +150,8 @@ def execute(pid, own_uuid, path, arguments):
             with open(misc_file_path + '.sh', mode='w') as execute_file:
                 execute_file.write('#!/bin/bash' + os.linesep)
                 execute_file.write(command + os.linesep)
-                execute_file.write('echo ${PIPESTATUS[0]} > ' +
-                                   misc_file_path + '.exit' + os.linesep)
+                execute_file.write('echo ${PIPESTATUS[0]} > ' + shlex.quote(
+                    misc_file_path + '.exit') + os.linesep)
 
             mode = os.stat(misc_file_path + '.sh').st_mode
             mode |= (mode & 0o444) >> 2  # copy R bits to X
@@ -157,11 +159,10 @@ def execute(pid, own_uuid, path, arguments):
 
             if 'DISPLAY' in os.environ and shutil.which('xterm'):
                 subprocess_arguments = [
-                    'xterm', '-e', '{}.sh'.format(misc_file_path), '-geometry',
-                    '80'
+                    'xterm', '-e', misc_file_path + '.sh', '-geometry', '80'
                 ]
             else:
-                subprocess_arguments = ['{}.sh'.format(misc_file_path)]
+                subprocess_arguments = [misc_file_path + 'sh']
 
             process = yield from asyncio.create_subprocess_exec(
                 *subprocess_arguments, cwd=str(PurePath(path).parent))
