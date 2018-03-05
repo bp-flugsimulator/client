@@ -160,7 +160,7 @@ def execute(pid, own_uuid, path, arguments):
                     'xterm', '-e', sh.escape_path(misc_file_path + '.sh'), '-geometry', '80'
                 ]
             else:
-                subprocess_arguments = [sh.escape_path(misc_file_path + 'sh')]
+                subprocess_arguments = [sh.escape_path(misc_file_path + '.sh')]
 
             process = yield from asyncio.create_subprocess_exec(
                 *subprocess_arguments, cwd=str(PurePath(path).parent))
