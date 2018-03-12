@@ -93,6 +93,11 @@ def execute(pid, own_uuid, path, arguments):
             if not isinstance(arg, str):
                 raise ValueError("Element in arguments is not a string.")
 
+    if os.path.isdir(PurePath(path).parent):
+        parent_dir = (PurePath(path).parent)
+    else:
+        parent_dir = '.'
+
     misc_file_name = '{}-{}'.format(PurePath(path).parts[-1],
                                     own_uuid).replace(' ', '')
     misc_file_path = os.path.join(LOGGER.logdir, misc_file_name)
@@ -131,7 +136,7 @@ def execute(pid, own_uuid, path, arguments):
 
             process = yield from asyncio.create_subprocess_exec(
                 *['cmd.exe', '/c', command],
-                cwd=str(PurePath(path).parent),
+                cwd=parent_dir,
                 creationflags=subprocess.CREATE_NEW_CONSOLE,
                 startupinfo=startupinfo)
         else:
@@ -157,13 +162,14 @@ def execute(pid, own_uuid, path, arguments):
 
             if 'DISPLAY' in os.environ and shutil.which('xterm'):
                 subprocess_arguments = [
-                    'xterm', '-e', sh.escape_path(misc_file_path + '.sh'), '-geometry', '80'
+                    'xterm', '-e',
+                    sh.escape_path(misc_file_path + '.sh'), '-geometry', '80'
                 ]
             else:
                 subprocess_arguments = [sh.escape_path(misc_file_path + '.sh')]
 
             process = yield from asyncio.create_subprocess_exec(
-                *subprocess_arguments, cwd=str(PurePath(path).parent))
+                *subprocess_arguments, cwd=parent_dir)
 
         yield from asyncio.wait(
             {process.wait(), log_task}, return_when=asyncio.ALL_COMPLETED)
@@ -202,8 +208,13 @@ def execute(pid, own_uuid, path, arguments):
     else:
         os.remove(misc_file_path + '.sh')
 
-    with open(misc_file_path + '.exit') as log_file:
-        return log_file.readlines()[0].rstrip()
+    # if the terminal/cmd window gets killed
+    if not os.path.isfile(sh.escape_path(misc_file_path + '.exit')):
+        with open(misc_file_path + '.exit', mode='w') as exit_file:
+            exit_file.write('1')
+
+    with open(misc_file_path + '.exit') as exit_file:
+        return exit_file.readlines()[0].rstrip()
 
 
 @Rpc.method

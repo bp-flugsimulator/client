@@ -24,6 +24,16 @@ from client.logger import LOGGER
 
 
 class TestCommands(EventLoopTestCase):
+    def test_execution_nonexisting_directory(self):
+        path = os.path.join(os.getcwd(), 'appplications', 'tee.py')
+        self.assertEqual(
+            '127',
+            self.loop.run_until_complete(
+                client.command.execute(
+                    random.choice(string.digits),
+                    uuid4().hex, path, [])),
+        )
+
     def test_execution_wrong_path_object(self):
         self.assertRaises(
             ValueError,
