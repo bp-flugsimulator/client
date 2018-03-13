@@ -93,8 +93,8 @@ def execute(pid, own_uuid, path, arguments):
             if not isinstance(arg, str):
                 raise ValueError("Element in arguments is not a string.")
 
-    if os.path.isdir(PurePath(path).parent):
-        parent_dir = (PurePath(path).parent)
+    if os.path.isdir(str(PurePath(path).parent)):
+        parent_dir = str(PurePath(path).parent)
     else:
         parent_dir = '.'
 
