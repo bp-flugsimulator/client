@@ -26,8 +26,13 @@ from client.logger import LOGGER
 class TestCommands(EventLoopTestCase):
     def test_execution_nonexisting_directory(self):
         path = os.path.join(os.getcwd(), 'appplications', 'tee.py')
+        if os.name == 'nt':
+            return_value = '1'
+        else:
+            return_value = '127'
+
         self.assertEqual(
-            '127',
+            return_value,
             self.loop.run_until_complete(
                 client.command.execute(
                     random.choice(string.digits),
