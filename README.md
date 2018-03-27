@@ -1,19 +1,22 @@
 # Client für bp-flugsimulator
 
 ## Installation
-1. Download and install python 3.4 or newer
-1. Open cmd/terminal
-1.  Create and navigate to the install directory (ATTENTION!!! spaces in this path can lead to unexpected behavior)
-    ```sh
+1. Install python 3.4 or newer
+1. Open a cmd/terminal
+1.  Create and navigate to the install directory
+> (ATTENTION!!! spaces in this path can lead to unexpected behavior)
+
+  * On Windows:
+```sh
     md C:\fsim-client
     cd C:\fsim-client\
-    ```
-    or
-    ```sh
+```
+  * On Linux:
+ ```sh
     mkdir /home/fsim-user/fsim-client
     cd /home/fsim-user/fsim-client/
-    ```
-1. Download the Client in one of the following ways:
+ ```
+4. Download the Client in one of the following ways:
     1.  Clone the repository from github:  
         To use this option you need to install git first.
         ```sh
