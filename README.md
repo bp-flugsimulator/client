@@ -1,7 +1,7 @@
 # Client für bp-flugsimulator
 
 ## Installation
-1. Download and install python
+1. Download and install python 3.4 or newer
 1. Open cmd/terminal
 1.  Create and navigate to the install directory (ATTENTION!!! spaces in this path can lead to unexpected behavior)
     ```sh
