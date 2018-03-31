@@ -1,13 +1,42 @@
 # Client für bp-flugsimulator
 
-## Installieren
+## Installation
+1. Install python 3.4 or newer
+1. Open a cmd/terminal
+1.  Create and navigate to the install directory
+> (ATTENTION!!! spaces in this path can lead to unexpected behavior)
 
+  * On Windows:
 ```sh
-sudo pip install git+https://git@github.com/bp-flugsimulator/client.git#egg=bp-flugsimulator-client
+    md C:\fsim-client
+    cd C:\fsim-client\
 ```
+  * On Linux:
+ ```sh
+    mkdir /home/fsim-user/fsim-client
+    cd /home/fsim-user/fsim-client/
+ ```
+4. Download the Client in one of the following ways:
+    1.  Clone the repository from github:  
+        To use this option you need to install git first.
+        ```sh
+        git clone https://github.com/bp-flugsimulator/client
+        ```
+    1.  Download it from a running server instance from the local network:  
+       To use this option the file install.py is needed from the repository.
+       The example is given with a sever with the ip 0.0.0.0 on port 4242.
+        ```sh
+        python install.py --download-client 0.0.0.0:4242
+        ```
+1. Install the python dependencies with install.py (which comes with the client files):
+    ```sh
+    python install.py
+    ```
+    If the python installation is to old the script will fail on the first attempt.
 
-## Docker Testing
 
+
+## Docker Testing (internal)
 1. Docker installieren
 1. Repository clonen
     ```sh
