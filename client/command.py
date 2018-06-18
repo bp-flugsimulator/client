@@ -377,7 +377,7 @@ def filesystem_move(
                 os.mkdir(os.path.join(dest_root, directory))
 
             for fil in files:
-                os.link(
+                shutil.copyfile(
                     os.path.join(root, fil),
                     os.path.join(dest_root, fil),
                 )
@@ -385,7 +385,7 @@ def filesystem_move(
 
     elif source_type == 'file':
         # finally link source to destination
-        os.link(source_path, destination_path)
+        shutil.copyfile(source_path, destination_path)
         return sh.hash_file(destination_path)
 
 
@@ -432,34 +432,10 @@ def filesystem_restore(
     backup_path = destination_path + backup_ending
 
     if os.path.exists(destination_path):
-
-        if source_type == 'file':
-            hash_gen = sh.hash_file(destination_path)
-        elif source_type == 'dir':
-            hash_gen = sh.hash_directory(destination_path)
-
-        if hash_value != hash_gen and os.path.exists(source_path):
-            # if the hash values do not match then
-            # check if the source file was changed
-            # if the source file was changed but
-            # the files are still linked then proceed.
-            if source_type == 'file':
-                hash_value = sh.hash_file(source_path)
-            elif source_type == 'dir':
-                hash_value = sh.hash_directory(source_path)
-
-        if hash_value == hash_gen:
-            if source_type == 'dir':
-                shutil.rmtree(destination_path)
-            elif source_type == 'file':
-                os.remove(destination_path)
-        else:
-            raise ValueError(
-                "The {} `{}` was changed while it was replaced. Remove it yourself if you don not need it.".
-                format(
-                    "file" if source_type == 'file' else 'directory',
-                    destination_path,
-                ))
+        if source_type == 'dir':
+            shutil.rmtree(destination_path)
+        elif source_type == 'file':
+            os.remove(destination_path)
 
     if os.path.exists(backup_path):
         os.rename(backup_path, destination_path)

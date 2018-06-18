@@ -28,7 +28,7 @@ def get_requirements():
 setup(
     name="bp-flugsimulator-client",
     description="Client for the bp-flugsimulator",
-    version="1.0.0",
+    version="1.1.0",
     scripts=[],
     url="https://github.com/bp-flugsimulator/client",
     author="bp-flugsimulator",
