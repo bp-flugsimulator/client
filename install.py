@@ -9,6 +9,7 @@ Example
     $python install.py --download-packages
     $python install.py --download-client 127.0.0.1:4242
 """
+from distutils.version import LooseVersion
 
 from platform import system, architecture
 from os import listdir, remove, mkdir, getcwd
@@ -24,6 +25,7 @@ from urllib.request import urlretrieve
 from shutil import unpack_archive, rmtree
 
 import pip
+import sys
 
 
 class Config:
@@ -214,6 +216,20 @@ if __name__ == "__main__":
     ARGS = PARSER.parse_args()
 
     CONFIG = Config.parse()
+
+
+    if not (3 == sys.version_info.major and  4 <= sys.version_info.minor <= 6):
+        raise Exception('only python 3.4 to 3.6 is supported, currently running ' + str(sys.version))
+
+    # update pip to local file
+    if LooseVersion('10.0.0') < LooseVersion(pip.__version__) < LooseVersion('8.0.0'):
+        if pip.main([
+                'install', '--upgrade', 'pip', '--no-index', '--find-links',
+                'file://' + os.getcwd() + '/libs'
+        ]) != 0:
+            raise Exception('could not install pip from file')
+
+
 
     # select requirements file
     if system() == 'Windows':
